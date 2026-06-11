@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menú - Shell's Bread</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;500&display=swap');
+        
+        html, body {
+            font-family: 'Poppins', sans-serif;
+            background-image: url('font.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #ffffff;
+            min-height: 100vh;
+        }
+
+        .logo-font {
+            font-family: 'Playfair Display', serif;
+        }
+
+        .category-card {
+            opacity: 0;
+            transform: translateY(80px);
+            transition: all 0.9s ease-out;
+            border-radius: 1.75rem;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        .category-card.appear {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .category-card:hover {
+            transform: scale(1.03) translateY(-8px);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+        }
+
+        .modal {
+            background-image: url('font.png');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .modal-content {
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(12px);
+        }
+
+        .section-title {
+            color: #ffffff;
+            text-shadow: 0 0 15px rgba(0,0,0,0.8);
+        }
+
+        /* Carrusel */
+        .carousel {
+            position: relative;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        .carousel-inner {
+            display: flex;
+            transition: transform 0.6s ease-in-out;
+        }
+        .carousel-slide {
+            min-width: 100%;
+        }
+        .carousel-slide img {
+            width: 100%;
+            height: 340px;
+            object-fit: cover;
+        }
+        .carousel-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            z-index: 10;
+            transition: all 0.3s;
+        }
+        .carousel-btn:hover {
+            background: #F5C400;
+            color: black;
+        }
+        .carousel-prev { left: 15px; }
+        .carousel-next { right: 15px; }
+        
+        .carousel-dots {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+        .dot {
+            width: 11px;
+            height: 11px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .dot.active {
+            background: #F5C400;
+            transform: scale(1.4);
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+
+<header class="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+        <a href="index.html" class="flex items-center gap-2 text-white hover:text-orange-400 transition-colors">
+            <i class="fas fa-arrow-left text-2xl"></i>
+            <span class="text-sm font-medium tracking-wider hidden sm:block">REGRESAR AL INICIO</span>
+        </a>
+        <img src="log.png" alt="Shell's Bread" class="h-14 w-auto">
+        <div class="w-9"></div>
+    </div>
+</header>
+
+<main class="pt-24 pb-16 px-4 sm:px-6 max-w-5xl mx-auto">
+    <h1 class="logo-font text-5xl sm:text-6xl font-bold text-center mb-12 tracking-wider text-[#F5C400]">
+        MENÚ
+    </h1>
+
+    <div class="space-y-6 sm:space-y-8" id="categories"></div>
+</main>
+
+<!-- Modal -->
+<div id="modal" class="modal fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+    <div class="modal-content rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-y-auto relative border border-[#F5C400]/30 shadow-2xl">
+        <button onclick="closeModal()" 
+                class="absolute top-4 right-4 text-5xl text-white/80 hover:text-white z-20 transition">×</button>
+        <div class="p-8 sm:p-12" id="modal-content"></div>
+    </div>
+</div>
+
+<script>
+    const sections = [
+        { id: "alimentos", title: "ALIMENTOS", img: "alimentos.png" },
+        { id: "desayunos", title: "DESAYUNOS", img: "desayunos.png" },
+        { id: "pan-salado", title: "PAN SALADO", img: "pan-salado.png" },
+        { id: "pan-dulce", title: "PAN DULCE", img: "pan-dulce.png" },
+        { id: "bebidas", title: "BEBIDAS", img: "bebidas.png" }
+    ];
+
+    const container = document.getElementById('categories');
+
+    sections.forEach((sec, index) => {
+        const card = document.createElement('button');
+        card.className = `category-card w-full aspect-video relative`;
+        card.innerHTML = `
+            <div class="category-image-container rounded-3xl overflow-hidden shadow-xl">
+                <img src="${sec.img}" class="w-full h-full object-cover">
+            </div>
+            <div class="absolute inset-x-0 bottom-8">
+                <div class="text-center">
+                    <h2 class="logo-font text-4xl sm:text-5xl font-bold tracking-wider section-title">${sec.title}</h2>
+                </div>
+            </div>
+        `;
+        card.onclick = () => openModal(sec);
+        container.appendChild(card);
+
+        setTimeout(() => card.classList.add('appear'), 100 + index * 150);
+    });
+
+    // ==================== CARRUSEL ====================
+    let autoIntervals = {};
+
+    function createCarousel(sectionId) {
+        const count = 3; // Solo 3 fotos por sección
+
+        let images = Array.from({length: count}, (_, i) => {
+            if (sectionId === "alimentos") return `carualimentos${i+1}.png`;
+            if (sectionId === "desayunos") return `cardesayunos${i+1}.png`;
+            if (sectionId === "pan-salado") return `carpansalado${i+1}.png`;
+            if (sectionId === "pan-dulce") return `carpandulce${i+1}.png`;
+            if (sectionId === "bebidas") return `carbebidas${i+1}.png`;
+        });
+
+        let html = `<div class="carousel" id="carousel-${sectionId}">
+            <div class="carousel-inner" id="inner-${sectionId}">`;
+
+        images.forEach((img, index) => {
+            html += `
+                <div class="carousel-slide ${index === 0 ? '' : 'hidden'}" data-index="${index}">
+                    <img src="${img}" alt="${sectionId} ${index+1}">
+                </div>`;
+        });
+
+        html += `</div>
+            <button class="carousel-btn carousel-prev" onclick="prevSlide('${sectionId}')">‹</button>
+            <button class="carousel-btn carousel-next" onclick="nextSlide('${sectionId}')">›</button>
+            <div class="carousel-dots" id="dots-${sectionId}"></div>
+        </div>`;
+
+        return html;
+    }
+
+    let currentSlides = {};
+
+    function initCarousel(sectionId) {
+        const dotsContainer = document.getElementById(`dots-${sectionId}`);
+        const slides = document.querySelectorAll(`#inner-${sectionId} .carousel-slide`);
+        currentSlides[sectionId] = 0;
+
+        // Crear dots
+        dotsContainer.innerHTML = '';
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = `dot ${i === 0 ? 'active' : ''}`;
+            dot.onclick = () => goToSlide(sectionId, i);
+            dotsContainer.appendChild(dot);
+        });
+
+        updateCarousel(sectionId);
+
+        // Autoplay cada 3 segundos
+        if (autoIntervals[sectionId]) clearInterval(autoIntervals[sectionId]);
+        autoIntervals[sectionId] = setInterval(() => {
+            nextSlide(sectionId);
+        }, 3000);
+    }
+
+    function updateCarousel(sectionId) {
+        const inner = document.getElementById(`inner-${sectionId}`);
+        const slides = document.querySelectorAll(`#inner-${sectionId} .carousel-slide`);
+        const dots = document.querySelectorAll(`#dots-${sectionId} .dot`);
+
+        inner.style.transform = `translateX(-${currentSlides[sectionId] * 100}%)`;
+        
+        slides.forEach((slide, i) => {
+            slide.classList.toggle('hidden', i !== currentSlides[sectionId]);
+        });
+
+        dots.forEach((dot, i) => dot.classList.toggle('active', i === currentSlides[sectionId]));
+    }
+
+    window.nextSlide = function(sectionId) {
+        const slidesCount = document.querySelectorAll(`#inner-${sectionId} .carousel-slide`).length;
+        currentSlides[sectionId] = (currentSlides[sectionId] + 1) % slidesCount;
+        updateCarousel(sectionId);
+    };
+
+    window.prevSlide = function(sectionId) {
+        const slidesCount = document.querySelectorAll(`#inner-${sectionId} .carousel-slide`).length;
+        currentSlides[sectionId] = (currentSlides[sectionId] - 1 + slidesCount) % slidesCount;
+        updateCarousel(sectionId);
+    };
+
+    window.goToSlide = function(sectionId, index) {
+        currentSlides[sectionId] = index;
+        updateCarousel(sectionId);
+    };
+
+    // ==================== MODAL ====================
+    function openModal(sec) {
+        const modal = document.getElementById('modal');
+        const content = document.getElementById('modal-content');
+        
+        let html = `
+            <h2 class="logo-font text-5xl font-bold text-center mb-8 text-white">${sec.title}</h2>
+            ${createCarousel(sec.id)}
+        `;
+
+        // === Contenido completo de cada sección (igual que antes) ===
+        if (sec.id === "alimentos") {
+            html += `
+                <div class="space-y-6">
+                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
+                        <div><span class="font-bold">NEW YORK</span><br><small>Pastrami, Mozzarella, Tomate Cherry, mix de lechugas y aderezo de la casa sobre focaccia</small></div>
+                        <span class="font-bold text-xl">$220</span>
+                    </div>
+                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
+                        <div><span class="font-bold">CHICAGO</span><br><small>Huevo revuelto con jamón de pavo, tomate cherry y mix de lechugas sobre focaccia</small></div>
+                        <span class="font-bold text-xl">$180</span>
+                    </div>
+                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
+                        <div><span class="font-bold">BOSTON</span><br><small>Mezcla de 3 quesos con mix de lechugas y aderezo de la casa sobre focaccia</small></div>
+                        <span class="font-bold text-xl">$180</span>
+                    </div>
+                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
+                        <div><span class="font-bold">SUNSHINE</span><br><small>Mix de vegetales con base de queso de cabra y mix de lechugas sobre focaccia</small></div>
+                        <span class="font-bold text-xl">$180</span>
+                    </div>
+                </div>`;
+        } 
+        else if (sec.id === "desayunos") {
+            html += `
+                <div class="space-y-6">
+                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
+                        <div><span class="font-bold">HUEVOS MEDITERRÁNEOS</span><br><small>2 huevos estrellados tiernos sobre cama de xocodip sazonado en Shell's</small></div>
+                        <span class="font-bold text-xl">$160</span>
+                    </div>
+                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
+                        <div><span class="font-bold">OMELETTE SHELL'S</span><br><small>Huevo con mix de vegetales y queso mozzarella, acompañado de una rebanada de hogaza</small></div>
+                        <span class="font-bold text-xl">$150</span>
+                    </div>
+                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
+                        <div><span class="font-bold">SWEET BURRATA TOAST</span><br><small>Mix de la casa (plátano y dátil), burrata y nuez de topping</small></div>
+                        <span class="font-bold text-xl">$120</span>
+                    </div>
+                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
+                        <div><span class="font-bold">FRENCH TOAST</span><br><small>2 rebanadas de nuestra hogaza integral o blanca con toppings (yogurt griego y mix de berries)</small></div>
+                        <span class="font-bold text-xl">$150</span>
+                    </div>
+                </div>`;
+        } 
+        else if (sec.id === "pan-salado") {
+            html += `
+                <div class="space-y-8">
+                    <div>
+                        <h3 class="text-2xl font-bold mb-4 text-white">HOGAZAS</h3>
+                        <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                            <div>Blanca — $120</div>
+                            <div>Integral — $140</div>
+                            <div>Nuez c/ Arándano — $160</div>
+                            <div>Semillas c/ Arándano — $160</div>
+                            <div>Integral c/ Tomates Deshidr. — $150</div>
+                            <div>Centeno c/ Semillas — $190</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-4 text-white">PAN DE CAJA</h3>
+                        <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                            <div>Blanco — $120</div>
+                            <div>Integral — $140</div>
+                            <div>Integral c/ Tomates Deshidr. — $150</div>
+                            <div>Centeno c/ Semillas — $190</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-4 text-white">BAGUETTES</h3>
+                        <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                            <div>Semillas / Nuez con Arándano — $80</div>
+                            <div>Integral — $70</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-4 text-white">CROISSANTS</h3>
+                        <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                            <div>Natural — $40</div>
+                            <div>Jamón y Queso — $75</div>
+                            <div>Jamón, Queso y Arúgula — $85</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-4 text-white">FOCACCIAS</h3>
+                        <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                            <div>Blanca — $40</div>
+                            <div>Integral — $45</div>
+                            <div>Italiana — $50</div>
+                        </div>
+                    </div>
+                    <div class="text-sm space-y-1">
+                        <div>Pan de Hamburguesa — $30</div>
+                        <div>Bisquets Integral con Arándano — $25</div>
+                        <div>Bisquets Integral — $20</div>
+                    </div>
+                </div>`;
+        } 
+        else if (sec.id === "pan-dulce") {
+            html += `
+                <div class="grid grid-cols-1 gap-4 text-lg">
+                    <div class="flex justify-between"><span>Conchas (Vainilla y Chocolate)</span><span class="font-bold">$50</span></div>
+                    <div class="flex justify-between"><span>Chocolatín</span><span class="font-bold">$50</span></div>
+                    <div class="flex justify-between"><span>Rol de Canela</span><span class="font-bold">$60</span></div>
+                    <div class="flex justify-between"><span>Galleta Chocolate Chip Nuez</span><span class="font-bold">$50</span></div>
+                    <div class="flex justify-between"><span>Galleta Cacao c/ Choco Blanco</span><span class="font-bold">$50</span></div>
+                    <div class="flex justify-between"><span>Galleta Cookies and Cream</span><span class="font-bold">$50</span></div>
+                    <div class="flex justify-between"><span>Brookie</span><span class="font-bold">$75</span></div>
+                    <div class="flex justify-between"><span>Croissant Pistache</span><span class="font-bold">$75</span></div>
+                    <div class="flex justify-between"><span>Croissant Almendras</span><span class="font-bold">$75</span></div>
+                    <div class="flex justify-between"><span>Croissant Lotus</span><span class="font-bold">$75</span></div>
+                </div>`;
+        } 
+        else if (sec.id === "bebidas") {
+            html += `
+                <div class="space-y-8">
+                    <div>
+                        <h3 class="text-2xl font-bold mb-4 text-white">EN LAS ROCAS</h3>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex justify-between"><span>Latte</span><span>$70 / C $80 / G</span></div>
+                            <div class="flex justify-between"><span>Americano</span><span>$55</span></div>
+                            <div class="flex justify-between"><span>Dirty Chai</span><span>$80 / C $90 / G</span></div>
+                            <div class="flex justify-between"><span>Matcha</span><span>$80</span></div>
+                            <div class="flex justify-between"><span>Brown Sugar Latte</span><span>$90</span></div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-4 text-white">FRAPPES</h3>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex justify-between"><span>Mocha</span><span>$80</span></div>
+                            <div class="flex justify-between"><span>Matcha</span><span>$80</span></div>
+                            <div class="flex justify-between"><span>Chai</span><span>$75 / C $85 / G</span></div>
+                            <div class="flex justify-between"><span>Cajeta</span><span>$90</span></div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-4 text-white">CALIENTES</h3>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex justify-between"><span>Capuchino</span><span>$85</span></div>
+                            <div class="flex justify-between"><span>Americano</span><span>$55</span></div>
+                            <div class="flex justify-between"><span>Latte</span><span>$80</span></div>
+                            <div class="flex justify-between"><span>Expreso</span><span>$40</span></div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-white/70 pt-4 border-t border-white/20">
+                        <strong>Extras:</strong> Esencia de Lavanda / Vainilla / Mocha / Caramelo / Salted Chocolate Caramel
+                    </p>
+                </div>`;
+        }
+
+        content.innerHTML = html;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        setTimeout(() => initCarousel(sec.id), 150);
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+
+        // Detener todos los autoplay al cerrar el modal
+        Object.values(autoIntervals).forEach(interval => clearInterval(interval));
+        autoIntervals = {};
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === "Escape") closeModal();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shell's Bread</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      color: white;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    /* Fondo en video */
+    #background-video {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      min-width: 100%;
+      min-height: 100%;
+      width: auto;
+      height: auto;
+      transform: translate(-50%, -50%);
+      z-index: -1;
+      object-fit: cover;
+    }
+
+    .container {
+      position: relative;
+      z-index: 2;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px;
+    }
+
+    /* Logo sin efecto neón */
+    .logo {
+      margin-top: 120px;     /* Bajado un poco más */
+      width: 280px;
+      transition: all 0.4s ease;
+    }
+
+    .logo:hover {
+      transform: scale(1.05);
+    }
+
+    /* Barra superior */
+    .top-bar {
+      position: absolute;
+      top: 20px;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 30px;
+      z-index: 10;
+    }
+
+    .icon-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .icon-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.1);
+      border-color: white;
+    }
+
+    .icon-btn img {
+      width: 40px;
+      height: 40px;
+    }
+
+    /* Botones principales */
+    .main-buttons {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 25px;
+      margin-bottom: 80px;
+    }
+
+    .btn {
+      padding: 18px 50px;
+      font-size: 28px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.4s;
+      text-align: center;
+      min-width: 280px;
+    }
+
+    .btn-menu {
+      background: linear-gradient(45deg, #FF6200, #FFAA00);
+      color: white;
+    }
+
+    .btn-menu:hover {
+      transform: translateY(-5px) scale(1.05);
+    }
+
+    .btn-recomendar {
+      background: transparent;
+      color: white;
+      border: 3px solid white;
+    }
+
+    .btn-recomendar:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-5px);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Video de fondo -->
+  <video id="background-video" autoplay muted loop playsinline>
+    <source src="fon.mp4" type="video/mp4">
+  </video>
+
+  <div class="container">
+
+    <!-- Barra superior con iconos -->
+    <div class="top-bar">
+      <!-- Instagram -->
+      <a href="https://www.instagram.com/shells_bread" target="_blank">
+        <div class="icon-btn">
+          <img src="ig.png" alt="Instagram">
+        </div>
+      </a>
+
+      <!-- WhatsApp -->
+      <a href="https://wa.me/528717345351?text=Hola%20Marce%2C%20quisiera%20hacerte%20un%20pedido%20porfavor." target="_blank">
+        <div class="icon-btn">
+          <img src="tel.png" alt="WhatsApp">
+        </div>
+      </a>
+    </div>
+
+    <!-- Logo -->
+    <img src="log.png" alt="Logo Shell's Bread" class="logo">
+
+    <!-- Botones principales -->
+    <div class="main-buttons">
+      <button class="btn btn-menu" onclick="window.location.href='menu.html'">
+        MENÚ
+      </button>
+      
+      <button class="btn btn-recomendar" onclick="window.open('https://maps.app.goo.gl/EN3fVNwzhTC5LDzV8?g_st=ic', '_blank')">
+        RECOMIÉNDANOS
+      </button>
+    </div>
+
+  </div>
+
+</body>
+</html>
