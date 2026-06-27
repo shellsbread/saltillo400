@@ -11,12 +11,22 @@
         
         html, body {
             font-family: 'Poppins', sans-serif;
+            color: #ffffff;
+            min-height: 100vh;
+            background-color: #111111; /* color de respaldo detrás de la imagen */
+        }
+
+        /* Fondo fijo al tamaño de la PANTALLA (no de la página completa).
+           Esto evita el "zoom" excesivo en celulares. */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
             background-image: url('font.png');
             background-size: cover;
             background-position: center;
-            background-attachment: fixed;
-            color: #ffffff;
-            min-height: 100vh;
+            background-repeat: no-repeat;
         }
 
         .logo-font {
