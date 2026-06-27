@@ -9,11 +9,15 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;500&display=swap');
         
+        /* Color de respaldo SOLO en html, para no tapar la imagen del ::before */
+        html {
+            background-color: #111111;
+        }
+
         html, body {
             font-family: 'Poppins', sans-serif;
             color: #ffffff;
             min-height: 100vh;
-            background-color: #111111; /* color de respaldo detrás de la imagen */
         }
 
         /* Fondo fijo al tamaño de la PANTALLA (no de la página completa).
