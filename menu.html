@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;500&display=swap');
-        
+
         /* Color de respaldo SOLO en html, para no tapar la imagen del ::before */
         html {
             background-color: #111111;
@@ -21,13 +21,14 @@
         }
 
         /* Fondo fijo al tamaño de la PANTALLA (no de la página completa).
-           Esto evita el "zoom" excesivo en celulares. */
+           La imagen ahora se controla con la variable --bg-image,
+           que se actualiza en tiempo real desde Firebase. */
         body::before {
             content: "";
             position: fixed;
             inset: 0;
             z-index: -1;
-            background-image: url('font.png');
+            background-image: var(--bg-image, url('font.png'));
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -59,7 +60,7 @@
         }
 
         .modal {
-            background-image: url('font.png');
+            background-image: var(--bg-image, url('font.png'));
             background-size: cover;
             background-position: center;
         }
@@ -115,7 +116,7 @@
         }
         .carousel-prev { left: 15px; }
         .carousel-next { right: 15px; }
-        
+
         .carousel-dots {
             position: absolute;
             bottom: 15px;
@@ -147,7 +148,7 @@
             <i class="fas fa-arrow-left text-2xl"></i>
             <span class="text-sm font-medium tracking-wider hidden sm:block">REGRESAR AL INICIO</span>
         </a>
-        <img src="log.png" alt="Shell's Bread" class="h-14 w-auto">
+        <img id="site-logo" src="log.png" alt="Shell's Bread" class="h-14 w-auto">
         <div class="w-9"></div>
     </div>
 </header>
@@ -163,107 +164,256 @@
 <!-- Modal -->
 <div id="modal" class="modal fixed inset-0 z-50 hidden flex items-center justify-center p-4">
     <div class="modal-content rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-y-auto relative border border-[#F5C400]/30 shadow-2xl">
-        <button onclick="closeModal()" 
+        <button onclick="closeModal()"
                 class="absolute top-4 right-4 text-5xl text-white/80 hover:text-white z-20 transition">×</button>
         <div class="p-8 sm:p-12" id="modal-content"></div>
     </div>
 </div>
 
-<script>
-    const sections = [
-        { id: "alimentos", title: "ALIMENTOS", img: "alimentos.png" },
-        { id: "desayunos", title: "DESAYUNOS", img: "desayunos.png" },
-        { id: "pan-salado", title: "PAN SALADO", img: "pan-salado.png" },
-        { id: "pan-dulce", title: "PAN DULCE", img: "pan-dulce.png" },
-        { id: "bebidas", title: "BEBIDAS", img: "bebidas.png" }
-    ];
+<!-- ============ FIREBASE (lectura en tiempo real) ============ -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-    const container = document.getElementById('categories');
+    const firebaseConfig = {
+        apiKey: "AIzaSyBE-mzDUK8VaZ7zqeb2EwQkmSrj56VJrWo",
+        authDomain: "menushellsdi.firebaseapp.com",
+        projectId: "menushellsdi",
+        storageBucket: "menushellsdi.firebasestorage.app",
+        messagingSenderId: "250584423092",
+        appId: "1:250584423092:web:dd90a122dfd870e25fd5e1",
+        measurementId: "G-CHHQL5X9SB"
+    };
 
-    sections.forEach((sec, index) => {
-        const card = document.createElement('button');
-        card.className = `category-card w-full aspect-video relative`;
-        card.innerHTML = `
-            <div class="category-image-container rounded-3xl overflow-hidden shadow-xl">
-                <img src="${sec.img}" class="w-full h-full object-cover">
-            </div>
-            <div class="absolute inset-x-0 bottom-8">
-                <div class="text-center">
-                    <h2 class="logo-font text-4xl sm:text-5xl font-bold tracking-wider section-title">${sec.title}</h2>
-                </div>
-            </div>
-        `;
-        card.onclick = () => openModal(sec);
-        container.appendChild(card);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-        setTimeout(() => card.classList.add('appear'), 100 + index * 150);
+    // Escucha en tiempo real: cualquier cambio del admin se ve al instante.
+    onSnapshot(doc(db, "site", "menu"), (snap) => {
+        if (snap.exists()) {
+            window.MENU_DATA = snap.data();
+        } else {
+            window.MENU_DATA = window.DEFAULT_DATA;
+        }
+        window.renderAll();
+    }, (err) => {
+        console.warn("Firebase sin conexión, mostrando menú por defecto:", err);
+        window.MENU_DATA = window.MENU_DATA || window.DEFAULT_DATA;
+        window.renderAll();
     });
+</script>
+
+<!-- ============ LÓGICA DEL MENÚ ============ -->
+<script>
+    // ---------- Datos por defecto (respaldo si Firebase aún no responde) ----------
+    window.DEFAULT_DATA = {
+        background: "font.png",
+        logo: "log.png",
+        sections: [
+            {
+                id: "alimentos", title: "ALIMENTOS", img: "alimentos.png",
+                carousel: ["carualimentos1.png", "carualimentos2.png", "carualimentos3.png"],
+                note: "",
+                groups: [{ heading: "", layout: "list", items: [
+                    { name: "NEW YORK", desc: "Pastrami, Mozzarella, Tomate Cherry, mix de lechugas y aderezo de la casa sobre focaccia", price: "$220" },
+                    { name: "CHICAGO", desc: "Huevo revuelto con jamón de pavo, tomate cherry y mix de lechugas sobre focaccia", price: "$170" },
+                    { name: "BOSTON", desc: "Mezcla de 3 quesos con mix de lechugas y aderezo de la casa sobre focaccia", price: "$180" },
+                    { name: "SUNSHINE", desc: "Mix de vegetales con base de queso de cabra y mix de lechugas sobre focaccia", price: "$180" }
+                ]}]
+            },
+            {
+                id: "desayunos", title: "DESAYUNOS", img: "desayunos.png",
+                carousel: ["cardesayunos1.png", "cardesayunos2.png", "cardesayunos3.png"],
+                note: "",
+                groups: [{ heading: "", layout: "list", items: [
+                    { name: "HUEVOS MEDITERRÁNEOS", desc: "2 huevos estrellados tiernos sobre cama de xocodip sazonado en Shell's", price: "$160" },
+                    { name: "OMELETTE SHELL'S", desc: "Huevo con mix de vegetales y queso mozzarella, acompañado de una rebanada de hogaza", price: "$175" },
+                    { name: "SWEET BURRATA TOAST", desc: "Mix de la casa (plátano y dátil), burrata y nuez de topping", price: "$120" },
+                    { name: "FRENCH TOAST", desc: "2 rebanadas de nuestra hogaza integral o blanca con toppings (yogurt griego y mix de berries)", price: "$150" }
+                ]}]
+            },
+            {
+                id: "pan-salado", title: "PAN SALADO", img: "pan-salado.png",
+                carousel: ["carpansalado1.png", "carpansalado2.png", "carpansalado3.png"],
+                note: "",
+                groups: [
+                    { heading: "HOGAZAS", layout: "grid2", items: [
+                        { name: "Blanca", price: "$120" }, { name: "Integral", price: "$140" },
+                        { name: "Nuez c/ Arándano", price: "$160" }, { name: "Semillas c/ Arándano", price: "$160" },
+                        { name: "Integral c/ Tomates Deshidr.", price: "$150" }, { name: "Centeno c/ Semillas", price: "$190" }
+                    ]},
+                    { heading: "PAN DE CAJA", layout: "grid2", items: [
+                        { name: "Blanco", price: "$120" }, { name: "Integral", price: "$140" },
+                        { name: "Integral c/ Tomates Deshidr.", price: "$150" }, { name: "Centeno c/ Semillas", price: "$190" }
+                    ]},
+                    { heading: "BAGUETTES", layout: "grid2", items: [
+                        { name: "Semillas / Nuez con Arándano", price: "$80" }, { name: "Integral", price: "$70" }
+                    ]},
+                    { heading: "CROISSANTS", layout: "grid2", items: [
+                        { name: "Natural", price: "$40" }, { name: "Jamón y Queso", price: "$100" }, { name: "Jamón, Queso y verduras", price: "$110" }
+                    ]},
+                    { heading: "FOCACCIAS", layout: "grid2", items: [
+                        { name: "Blanca", price: "$40" }, { name: "Integral", price: "$45" }, { name: "Italiana", price: "$50" }
+                    ]},
+                    { heading: "", layout: "grid2", items: [
+                        { name: "Pan de Hamburguesa", price: "$30" }, { name: "Bisquets Integral con Arándano", price: "$25" }, { name: "Bisquets Integral", price: "$20" }
+                    ]}
+                ]
+            },
+            {
+                id: "pan-dulce", title: "PAN DULCE", img: "pan-dulce.png",
+                carousel: ["carpandulce1.png", "carpandulce2.png", "carpandulce3.png"],
+                note: "",
+                groups: [{ heading: "", layout: "priceRow", items: [
+                    { name: "Conchas (Vainilla y Chocolate)", price: "$50" },
+                    { name: "Chocolatín", price: "$50" },
+                    { name: "Rol de Canela", price: "$60" },
+                    { name: "Galleta Chocolate Chip Nuez", price: "$50" },
+                    { name: "Galleta Cacao c/ Choco Blanco", price: "$50" },
+                    { name: "Galleta Cookies and Cream", price: "$50" },
+                    { name: "Brookie", price: "$75" },
+                    { name: "Croissant Pistache", price: "$75" },
+                    { name: "Croissant Almendras", price: "$75" },
+                    { name: "Croissant Lotus", price: "$75" }
+                ]}]
+            },
+            {
+                id: "bebidas", title: "BEBIDAS", img: "bebidas.png",
+                carousel: ["carbebidas1.png", "carbebidas2.png", "carbebidas3.png"],
+                note: "Extras: Esencia de Lavanda / Vainilla / Mocha / Caramelo / Salted Chocolate Caramel",
+                groups: [
+                    { heading: "EN LAS ROCAS", layout: "priceRow", items: [
+                        { name: "Latte", price: "$70 / C   $80 / G" },
+                        { name: "Americano", price: "$55" },
+                        { name: "Dirty Chai", price: "$80 / C   $90 / G" },
+                        { name: "Matcha", price: "$80" },
+                        { name: "Brown Sugar Latte", price: "$90" }
+                    ]},
+                    { heading: "FRAPPES", layout: "priceRow", items: [
+                        { name: "Mocha", price: "$80" }, { name: "Matcha", price: "$80" },
+                        { name: "Chai", price: "$75 / C   $85 / G" }, { name: "Cajeta", price: "$90" }
+                    ]},
+                    { heading: "CALIENTES", layout: "priceRow", items: [
+                        { name: "Capuchino", price: "$85" }, { name: "Americano", price: "$55" },
+                        { name: "Latte", price: "$80" }, { name: "Expreso", price: "$40" }
+                    ]}
+                ]
+            }
+        ]
+    };
+
+    window.MENU_DATA = window.DEFAULT_DATA;
+
+    // ---------- Utilidades ----------
+    function esc(s) {
+        return String(s == null ? "" : s)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
+    function noteHtml(note) {
+        if (!note) return "";
+        const i = note.indexOf(":");
+        if (i > -1) return `<strong>${esc(note.slice(0, i + 1))}</strong>${esc(note.slice(i + 1))}`;
+        return esc(note);
+    }
+
+    // ---------- Render global ----------
+    window.renderAll = function () {
+        const data = window.MENU_DATA || window.DEFAULT_DATA;
+        // Fondo
+        document.documentElement.style.setProperty('--bg-image', `url("${(data.background || 'font.png')}")`);
+        // Logo
+        const logo = document.getElementById('site-logo');
+        if (logo && data.logo) logo.src = data.logo;
+        // Categorías
+        renderCategories(data);
+    };
+
+    function renderCategories(data) {
+        const container = document.getElementById('categories');
+        container.innerHTML = '';
+        (data.sections || []).forEach((sec, index) => {
+            const card = document.createElement('button');
+            card.className = `category-card w-full aspect-video relative`;
+            card.innerHTML = `
+                <div class="category-image-container rounded-3xl overflow-hidden shadow-xl">
+                    <img src="${esc(sec.img)}" class="w-full h-full object-cover" alt="${esc(sec.title)}">
+                </div>
+                <div class="absolute inset-x-0 bottom-8">
+                    <div class="text-center">
+                        <h2 class="logo-font text-4xl sm:text-5xl font-bold tracking-wider section-title">${esc(sec.title)}</h2>
+                    </div>
+                </div>
+            `;
+            card.onclick = () => openModal(sec);
+            container.appendChild(card);
+            setTimeout(() => card.classList.add('appear'), 100 + index * 150);
+        });
+    }
 
     // ==================== CARRUSEL ====================
     let autoIntervals = {};
+    let currentSlides = {};
 
-    function createCarousel(sectionId) {
-        const count = 3; // Solo 3 fotos por sección
+    function createCarousel(sec) {
+        const images = sec.carousel || [];
+        if (!images.length) return '';
 
-        let images = Array.from({length: count}, (_, i) => {
-            if (sectionId === "alimentos") return `carualimentos${i+1}.png`;
-            if (sectionId === "desayunos") return `cardesayunos${i+1}.png`;
-            if (sectionId === "pan-salado") return `carpansalado${i+1}.png`;
-            if (sectionId === "pan-dulce") return `carpandulce${i+1}.png`;
-            if (sectionId === "bebidas") return `carbebidas${i+1}.png`;
-        });
-
-        let html = `<div class="carousel" id="carousel-${sectionId}">
-            <div class="carousel-inner" id="inner-${sectionId}">`;
+        let html = `<div class="carousel" id="carousel-${sec.id}">
+            <div class="carousel-inner" id="inner-${sec.id}">`;
 
         images.forEach((img, index) => {
             html += `
                 <div class="carousel-slide ${index === 0 ? '' : 'hidden'}" data-index="${index}">
-                    <img src="${img}" alt="${sectionId} ${index+1}">
+                    <img src="${esc(img)}" alt="${esc(sec.id)} ${index + 1}">
                 </div>`;
         });
 
-        html += `</div>
-            <button class="carousel-btn carousel-prev" onclick="prevSlide('${sectionId}')">‹</button>
-            <button class="carousel-btn carousel-next" onclick="nextSlide('${sectionId}')">›</button>
-            <div class="carousel-dots" id="dots-${sectionId}"></div>
-        </div>`;
-
+        html += `</div>`;
+        if (images.length > 1) {
+            html += `
+                <button class="carousel-btn carousel-prev" onclick="prevSlide('${sec.id}')">‹</button>
+                <button class="carousel-btn carousel-next" onclick="nextSlide('${sec.id}')">›</button>
+                <div class="carousel-dots" id="dots-${sec.id}"></div>`;
+        }
+        html += `</div>`;
         return html;
     }
 
-    let currentSlides = {};
-
     function initCarousel(sectionId) {
-        const dotsContainer = document.getElementById(`dots-${sectionId}`);
-        const slides = document.querySelectorAll(`#inner-${sectionId} .carousel-slide`);
+        const inner = document.getElementById(`inner-${sectionId}`);
+        if (!inner) return;
+        const slides = inner.querySelectorAll('.carousel-slide');
         currentSlides[sectionId] = 0;
 
-        // Crear dots
-        dotsContainer.innerHTML = '';
-        slides.forEach((_, i) => {
-            const dot = document.createElement('div');
-            dot.className = `dot ${i === 0 ? 'active' : ''}`;
-            dot.onclick = () => goToSlide(sectionId, i);
-            dotsContainer.appendChild(dot);
-        });
+        const dotsContainer = document.getElementById(`dots-${sectionId}`);
+        if (dotsContainer) {
+            dotsContainer.innerHTML = '';
+            slides.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = `dot ${i === 0 ? 'active' : ''}`;
+                dot.onclick = () => goToSlide(sectionId, i);
+                dotsContainer.appendChild(dot);
+            });
+        }
 
         updateCarousel(sectionId);
 
-        // Autoplay cada 3 segundos
         if (autoIntervals[sectionId]) clearInterval(autoIntervals[sectionId]);
-        autoIntervals[sectionId] = setInterval(() => {
-            nextSlide(sectionId);
-        }, 3000);
+        if (slides.length > 1) {
+            autoIntervals[sectionId] = setInterval(() => nextSlide(sectionId), 3000);
+        }
     }
 
     function updateCarousel(sectionId) {
         const inner = document.getElementById(`inner-${sectionId}`);
-        const slides = document.querySelectorAll(`#inner-${sectionId} .carousel-slide`);
+        if (!inner) return;
+        const slides = inner.querySelectorAll('.carousel-slide');
         const dots = document.querySelectorAll(`#dots-${sectionId} .dot`);
 
         inner.style.transform = `translateX(-${currentSlides[sectionId] * 100}%)`;
-        
+
         slides.forEach((slide, i) => {
             slide.classList.toggle('hidden', i !== currentSlides[sectionId]);
         });
@@ -271,180 +421,64 @@
         dots.forEach((dot, i) => dot.classList.toggle('active', i === currentSlides[sectionId]));
     }
 
-    window.nextSlide = function(sectionId) {
+    window.nextSlide = function (sectionId) {
         const slidesCount = document.querySelectorAll(`#inner-${sectionId} .carousel-slide`).length;
+        if (!slidesCount) return;
         currentSlides[sectionId] = (currentSlides[sectionId] + 1) % slidesCount;
         updateCarousel(sectionId);
     };
 
-    window.prevSlide = function(sectionId) {
+    window.prevSlide = function (sectionId) {
         const slidesCount = document.querySelectorAll(`#inner-${sectionId} .carousel-slide`).length;
+        if (!slidesCount) return;
         currentSlides[sectionId] = (currentSlides[sectionId] - 1 + slidesCount) % slidesCount;
         updateCarousel(sectionId);
     };
 
-    window.goToSlide = function(sectionId, index) {
+    window.goToSlide = function (sectionId, index) {
         currentSlides[sectionId] = index;
         updateCarousel(sectionId);
     };
+
+    // ==================== RENDER DE PLATILLOS ====================
+    function renderItems(group) {
+        const items = group.items || [];
+        if (group.layout === "grid2") {
+            const inner = items.map(it => `<div>${esc(it.name)} — ${esc(it.price)}</div>`).join('');
+            return `<div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">${inner}</div>`;
+        } else if (group.layout === "priceRow") {
+            const inner = items.map(it => `<div class="flex justify-between"><span>${esc(it.name)}</span><span class="font-bold">${esc(it.price)}</span></div>`).join('');
+            return `<div class="space-y-3 text-sm">${inner}</div>`;
+        } else { // list
+            const inner = items.map(it => `
+                <div class="flex justify-between items-start border-b border-white/20 pb-4">
+                    <div><span class="font-bold">${esc(it.name)}</span>${it.desc ? `<br><small>${esc(it.desc)}</small>` : ''}</div>
+                    <span class="font-bold text-xl">${esc(it.price)}</span>
+                </div>`).join('');
+            return `<div class="space-y-6">${inner}</div>`;
+        }
+    }
+
+    function renderGroup(group) {
+        const head = group.heading ? `<h3 class="text-2xl font-bold mb-4 text-white">${esc(group.heading)}</h3>` : '';
+        return `<div>${head}${renderItems(group)}</div>`;
+    }
 
     // ==================== MODAL ====================
     function openModal(sec) {
         const modal = document.getElementById('modal');
         const content = document.getElementById('modal-content');
-        
-        let html = `
-            <h2 class="logo-font text-5xl font-bold text-center mb-8 text-white">${sec.title}</h2>
-            ${createCarousel(sec.id)}
-        `;
 
-        // === Contenido completo de cada sección (igual que antes) ===
-        if (sec.id === "alimentos") {
-            html += `
-                <div class="space-y-6">
-                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
-                        <div><span class="font-bold">NEW YORK</span><br><small>Pastrami, Mozzarella, Tomate Cherry, mix de lechugas y aderezo de la casa sobre focaccia</small></div>
-                        <span class="font-bold text-xl">$220</span>
-                    </div>
-                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
-                        <div><span class="font-bold">CHICAGO</span><br><small>Huevo revuelto con jamón de pavo, tomate cherry y mix de lechugas sobre focaccia</small></div>
-                        <span class="font-bold text-xl">$170</span>
-                    </div>
-                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
-                        <div><span class="font-bold">BOSTON</span><br><small>Mezcla de 3 quesos con mix de lechugas y aderezo de la casa sobre focaccia</small></div>
-                        <span class="font-bold text-xl">$180</span>
-                    </div>
-                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
-                        <div><span class="font-bold">SUNSHINE</span><br><small>Mix de vegetales con base de queso de cabra y mix de lechugas sobre focaccia</small></div>
-                        <span class="font-bold text-xl">$180</span>
-                    </div>
-                </div>`;
-        } 
-        else if (sec.id === "desayunos") {
-            html += `
-                <div class="space-y-6">
-                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
-                        <div><span class="font-bold">HUEVOS MEDITERRÁNEOS</span><br><small>2 huevos estrellados tiernos sobre cama de xocodip sazonado en Shell's</small></div>
-                        <span class="font-bold text-xl">$160</span>
-                    </div>
-                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
-                        <div><span class="font-bold">OMELETTE SHELL'S</span><br><small>Huevo con mix de vegetales y queso mozzarella, acompañado de una rebanada de hogaza</small></div>
-                        <span class="font-bold text-xl">$175</span>
-                    </div>
-                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
-                        <div><span class="font-bold">SWEET BURRATA TOAST</span><br><small>Mix de la casa (plátano y dátil), burrata y nuez de topping</small></div>
-                        <span class="font-bold text-xl">$120</span>
-                    </div>
-                    <div class="flex justify-between items-start border-b border-white/20 pb-4">
-                        <div><span class="font-bold">FRENCH TOAST</span><br><small>2 rebanadas de nuestra hogaza integral o blanca con toppings (yogurt griego y mix de berries)</small></div>
-                        <span class="font-bold text-xl">$150</span>
-                    </div>
-                </div>`;
-        } 
-        else if (sec.id === "pan-salado") {
-            html += `
-                <div class="space-y-8">
-                    <div>
-                        <h3 class="text-2xl font-bold mb-4 text-white">HOGAZAS</h3>
-                        <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                            <div>Blanca — $120</div>
-                            <div>Integral — $140</div>
-                            <div>Nuez c/ Arándano — $160</div>
-                            <div>Semillas c/ Arándano — $160</div>
-                            <div>Integral c/ Tomates Deshidr. — $150</div>
-                            <div>Centeno c/ Semillas — $190</div>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="text-2xl font-bold mb-4 text-white">PAN DE CAJA</h3>
-                        <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                            <div>Blanco — $120</div>
-                            <div>Integral — $140</div>
-                            <div>Integral c/ Tomates Deshidr. — $150</div>
-                            <div>Centeno c/ Semillas — $190</div>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="text-2xl font-bold mb-4 text-white">BAGUETTES</h3>
-                        <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                            <div>Semillas / Nuez con Arándano — $80</div>
-                            <div>Integral — $70</div>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="text-2xl font-bold mb-4 text-white">CROISSANTS</h3>
-                        <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                            <div>Natural — $40</div>
-                            <div>Jamón y Queso — $100</div>
-                            <div>Jamón, Queso y verduras — $110</div>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="text-2xl font-bold mb-4 text-white">FOCACCIAS</h3>
-                        <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                            <div>Blanca — $40</div>
-                            <div>Integral — $45</div>
-                            <div>Italiana — $50</div>
-                        </div>
-                    </div>
-                    <div class="text-sm space-y-1">
-                        <div>Pan de Hamburguesa — $30</div>
-                        <div>Bisquets Integral con Arándano — $25</div>
-                        <div>Bisquets Integral — $20</div>
-                    </div>
-                </div>`;
-        } 
-        else if (sec.id === "pan-dulce") {
-            html += `
-                <div class="grid grid-cols-1 gap-4 text-lg">
-                    <div class="flex justify-between"><span>Conchas (Vainilla y Chocolate)</span><span class="font-bold">$50</span></div>
-                    <div class="flex justify-between"><span>Chocolatín</span><span class="font-bold">$50</span></div>
-                    <div class="flex justify-between"><span>Rol de Canela</span><span class="font-bold">$60</span></div>
-                    <div class="flex justify-between"><span>Galleta Chocolate Chip Nuez</span><span class="font-bold">$50</span></div>
-                    <div class="flex justify-between"><span>Galleta Cacao c/ Choco Blanco</span><span class="font-bold">$50</span></div>
-                    <div class="flex justify-between"><span>Galleta Cookies and Cream</span><span class="font-bold">$50</span></div>
-                    <div class="flex justify-between"><span>Brookie</span><span class="font-bold">$75</span></div>
-                    <div class="flex justify-between"><span>Croissant Pistache</span><span class="font-bold">$75</span></div>
-                    <div class="flex justify-between"><span>Croissant Almendras</span><span class="font-bold">$75</span></div>
-                    <div class="flex justify-between"><span>Croissant Lotus</span><span class="font-bold">$75</span></div>
-                </div>`;
-        } 
-        else if (sec.id === "bebidas") {
-            html += `
-                <div class="space-y-8">
-                    <div>
-                        <h3 class="text-2xl font-bold mb-4 text-white">EN LAS ROCAS</h3>
-                        <div class="space-y-3 text-sm">
-                            <div class="flex justify-between"><span>Latte</span><span>$70 / C $80 / G</span></div>
-                            <div class="flex justify-between"><span>Americano</span><span>$55</span></div>
-                            <div class="flex justify-between"><span>Dirty Chai</span><span>$80 / C $90 / G</span></div>
-                            <div class="flex justify-between"><span>Matcha</span><span>$80</span></div>
-                            <div class="flex justify-between"><span>Brown Sugar Latte</span><span>$90</span></div>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="text-2xl font-bold mb-4 text-white">FRAPPES</h3>
-                        <div class="space-y-3 text-sm">
-                            <div class="flex justify-between"><span>Mocha</span><span>$80</span></div>
-                            <div class="flex justify-between"><span>Matcha</span><span>$80</span></div>
-                            <div class="flex justify-between"><span>Chai</span><span>$75 / C $85 / G</span></div>
-                            <div class="flex justify-between"><span>Cajeta</span><span>$90</span></div>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 class="text-2xl font-bold mb-4 text-white">CALIENTES</h3>
-                        <div class="space-y-3 text-sm">
-                            <div class="flex justify-between"><span>Capuchino</span><span>$85</span></div>
-                            <div class="flex justify-between"><span>Americano</span><span>$55</span></div>
-                            <div class="flex justify-between"><span>Latte</span><span>$80</span></div>
-                            <div class="flex justify-between"><span>Expreso</span><span>$40</span></div>
-                        </div>
-                    </div>
-                    <p class="text-xs text-white/70 pt-4 border-t border-white/20">
-                        <strong>Extras:</strong> Esencia de Lavanda / Vainilla / Mocha / Caramelo / Salted Chocolate Caramel
-                    </p>
-                </div>`;
+        let html = `
+            <h2 class="logo-font text-5xl font-bold text-center mb-8 text-white">${esc(sec.title)}</h2>
+            ${createCarousel(sec)}
+            <div class="space-y-8">
+        `;
+        (sec.groups || []).forEach(g => { html += renderGroup(g); });
+        if (sec.note) {
+            html += `<p class="text-xs text-white/70 pt-4 border-t border-white/20">${noteHtml(sec.note)}</p>`;
         }
+        html += `</div>`;
 
         content.innerHTML = html;
         modal.classList.remove('hidden');
@@ -453,19 +487,20 @@
         setTimeout(() => initCarousel(sec.id), 150);
     }
 
-    function closeModal() {
+    window.closeModal = function () {
         const modal = document.getElementById('modal');
         modal.classList.add('hidden');
         modal.classList.remove('flex');
-
-        // Detener todos los autoplay al cerrar el modal
         Object.values(autoIntervals).forEach(interval => clearInterval(interval));
         autoIntervals = {};
-    }
+    };
 
     document.addEventListener('keydown', (e) => {
         if (e.key === "Escape") closeModal();
     });
+
+    // Primer render con los datos por defecto (mientras llega Firebase)
+    window.renderAll();
 </script>
 </body>
 </html>
