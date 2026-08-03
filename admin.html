@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - Shell's Bread</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;500;600&display=swap');
+        html { background-color:#0d0d0d; }
+        body { font-family:'Poppins',sans-serif; color:#fff; }
+        .logo-font { font-family:'Playfair Display', serif; }
+        input, textarea, select { color-scheme: dark; }
+        ::-webkit-scrollbar { width:10px; height:10px; }
+        ::-webkit-scrollbar-thumb { background:#333; border-radius:6px; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+<!-- ================= LOGIN ================= -->
+<div id="login" class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-[#161616] border border-white/10 rounded-3xl p-8 shadow-2xl">
+        <div class="text-center mb-8">
+            <div class="logo-font text-3xl font-bold text-[#F5C400]">Shell's Bread</div>
+            <p class="text-white/50 text-sm mt-1">Panel de administración</p>
+        </div>
+        <form id="login-form" class="space-y-4">
+            <div>
+                <label class="block text-xs uppercase tracking-wider text-white/50 mb-1">Usuario</label>
+                <input id="usuario" type="text" autocomplete="username" value="marce"
+                       class="w-full bg-black/40 border border-white/15 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#F5C400]">
+            </div>
+            <div>
+                <label class="block text-xs uppercase tracking-wider text-white/50 mb-1">Contraseña</label>
+                <input id="password" type="password" autocomplete="current-password"
+                       class="w-full bg-black/40 border border-white/15 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-[#F5C400]">
+            </div>
+            <button type="submit" id="login-btn"
+                    class="w-full bg-[#F5C400] text-black font-semibold py-2.5 rounded-lg hover:brightness-95 transition">
+                Entrar
+            </button>
+            <p id="login-error" class="text-red-400 text-sm text-center min-h-[20px]"></p>
+        </form>
+    </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app" class="hidden">
+    <!-- Barra superior -->
+    <header class="sticky top-0 z-40 bg-[#0d0d0d]/95 backdrop-blur border-b border-white/10">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
+            <div class="logo-font text-xl font-bold text-[#F5C400] mr-auto">Shell's Bread · Admin</div>
+            <span id="status" class="text-xs text-white/60"></span>
+            <a href="menu.html" target="_blank"
+               class="text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition">
+               <i class="fas fa-eye mr-1"></i> Ver menú
+            </a>
+            <button id="save-btn"
+                    class="text-sm bg-[#F5C400] text-black font-semibold px-4 py-1.5 rounded-lg hover:brightness-95 transition">
+                <i class="fas fa-floppy-disk mr-1"></i> Guardar cambios
+            </button>
+            <button id="logout-btn"
+                    class="text-sm bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition">
+                Salir
+            </button>
+        </div>
+        <!-- Pestañas -->
+        <div id="tabs" class="max-w-5xl mx-auto px-4 pb-2 flex gap-2 overflow-x-auto"></div>
+    </header>
+
+    <main id="panel" class="max-w-5xl mx-auto px-4 py-6"></main>
+
+    <footer class="max-w-5xl mx-auto px-4 pb-16 text-center text-white/30 text-xs">
+        Los cambios de texto y precio se aplican al presionar <b>Guardar cambios</b>.
+        Las fotos se guardan al instante en cuanto las subes o quitas.
+    </footer>
+</div>
+
+<!-- ================= FIREBASE + LÓGICA ================= -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBE-mzDUK8VaZ7zqeb2EwQkmSrj56VJrWo",
+        authDomain: "menushellsdi.firebaseapp.com",
+        projectId: "menushellsdi",
+        storageBucket: "menushellsdi.firebasestorage.app",
+        messagingSenderId: "250584423092",
+        appId: "1:250584423092:web:dd90a122dfd870e25fd5e1",
+        measurementId: "G-CHHQL5X9SB"
+    };
+
+    // El usuario escribe "marce"; internamente lo convertimos a este correo
+    // que debes crear en Firebase Authentication (Email/Password).
+    const DOMINIO_ADMIN = "shellsbread.com";
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+    const auth = getAuth(app);
+
+    // ---------- Datos por defecto ----------
+    const DEFAULT_DATA = {
+        background: "font.png",
+        logo: "log.png",
+        sections: [
+            {
+                id: "alimentos", title: "ALIMENTOS", img: "alimentos.png",
+                carousel: ["carualimentos1.png", "carualimentos2.png", "carualimentos3.png"],
+                note: "",
+                groups: [{ heading: "", layout: "list", items: [
+                    { name: "NEW YORK", desc: "Pastrami, Mozzarella, Tomate Cherry, mix de lechugas y aderezo de la casa sobre focaccia", price: "$220" },
+                    { name: "CHICAGO", desc: "Huevo revuelto con jamón de pavo, tomate cherry y mix de lechugas sobre focaccia", price: "$170" },
+                    { name: "BOSTON", desc: "Mezcla de 3 quesos con mix de lechugas y aderezo de la casa sobre focaccia", price: "$180" },
+                    { name: "SUNSHINE", desc: "Mix de vegetales con base de queso de cabra y mix de lechugas sobre focaccia", price: "$180" }
+                ]}]
+            },
+            {
+                id: "desayunos", title: "DESAYUNOS", img: "desayunos.png",
+                carousel: ["cardesayunos1.png", "cardesayunos2.png", "cardesayunos3.png"],
+                note: "",
+                groups: [{ heading: "", layout: "list", items: [
+                    { name: "HUEVOS MEDITERRÁNEOS", desc: "2 huevos estrellados tiernos sobre cama de xocodip sazonado en Shell's", price: "$160" },
+                    { name: "OMELETTE SHELL'S", desc: "Huevo con mix de vegetales y queso mozzarella, acompañado de una rebanada de hogaza", price: "$175" },
+                    { name: "SWEET BURRATA TOAST", desc: "Mix de la casa (plátano y dátil), burrata y nuez de topping", price: "$120" },
+                    { name: "FRENCH TOAST", desc: "2 rebanadas de nuestra hogaza integral o blanca con toppings (yogurt griego y mix de berries)", price: "$150" }
+                ]}]
+            },
+            {
+                id: "pan-salado", title: "PAN SALADO", img: "pan-salado.png",
+                carousel: ["carpansalado1.png", "carpansalado2.png", "carpansalado3.png"],
+                note: "",
+                groups: [
+                    { heading: "HOGAZAS", layout: "grid2", items: [
+                        { name: "Blanca", price: "$120" }, { name: "Integral", price: "$140" },
+                        { name: "Nuez c/ Arándano", price: "$160" }, { name: "Semillas c/ Arándano", price: "$160" },
+                        { name: "Integral c/ Tomates Deshidr.", price: "$150" }, { name: "Centeno c/ Semillas", price: "$190" }
+                    ]},
+                    { heading: "PAN DE CAJA", layout: "grid2", items: [
+                        { name: "Blanco", price: "$120" }, { name: "Integral", price: "$140" },
+                        { name: "Integral c/ Tomates Deshidr.", price: "$150" }, { name: "Centeno c/ Semillas", price: "$190" }
+                    ]},
+                    { heading: "BAGUETTES", layout: "grid2", items: [
+                        { name: "Semillas / Nuez con Arándano", price: "$80" }, { name: "Integral", price: "$70" }
+                    ]},
+                    { heading: "CROISSANTS", layout: "grid2", items: [
+                        { name: "Natural", price: "$40" }, { name: "Jamón y Queso", price: "$100" }, { name: "Jamón, Queso y verduras", price: "$110" }
+                    ]},
+                    { heading: "FOCACCIAS", layout: "grid2", items: [
+                        { name: "Blanca", price: "$40" }, { name: "Integral", price: "$45" }, { name: "Italiana", price: "$50" }
+                    ]},
+                    { heading: "", layout: "grid2", items: [
+                        { name: "Pan de Hamburguesa", price: "$30" }, { name: "Bisquets Integral con Arándano", price: "$25" }, { name: "Bisquets Integral", price: "$20" }
+                    ]}
+                ]
+            },
+            {
+                id: "pan-dulce", title: "PAN DULCE", img: "pan-dulce.png",
+                carousel: ["carpandulce1.png", "carpandulce2.png", "carpandulce3.png"],
+                note: "",
+                groups: [{ heading: "", layout: "priceRow", items: [
+                    { name: "Conchas (Vainilla y Chocolate)", price: "$50" },
+                    { name: "Chocolatín", price: "$50" },
+                    { name: "Rol de Canela", price: "$60" },
+                    { name: "Galleta Chocolate Chip Nuez", price: "$50" },
+                    { name: "Galleta Cacao c/ Choco Blanco", price: "$50" },
+                    { name: "Galleta Cookies and Cream", price: "$50" },
+                    { name: "Brookie", price: "$75" },
+                    { name: "Croissant Pistache", price: "$75" },
+                    { name: "Croissant Almendras", price: "$75" },
+                    { name: "Croissant Lotus", price: "$75" }
+                ]}]
+            },
+            {
+                id: "bebidas", title: "BEBIDAS", img: "bebidas.png",
+                carousel: ["carbebidas1.png", "carbebidas2.png", "carbebidas3.png"],
+                note: "Extras: Esencia de Lavanda / Vainilla / Mocha / Caramelo / Salted Chocolate Caramel",
+                groups: [
+                    { heading: "EN LAS ROCAS", layout: "priceRow", items: [
+                        { name: "Latte", price: "$70 / C   $80 / G" },
+                        { name: "Americano", price: "$55" },
+                        { name: "Dirty Chai", price: "$80 / C   $90 / G" },
+                        { name: "Matcha", price: "$80" },
+                        { name: "Brown Sugar Latte", price: "$90" }
+                    ]},
+                    { heading: "FRAPPES", layout: "priceRow", items: [
+                        { name: "Mocha", price: "$80" }, { name: "Matcha", price: "$80" },
+                        { name: "Chai", price: "$75 / C   $85 / G" }, { name: "Cajeta", price: "$90" }
+                    ]},
+                    { heading: "CALIENTES", layout: "priceRow", items: [
+                        { name: "Capuchino", price: "$85" }, { name: "Americano", price: "$55" },
+                        { name: "Latte", price: "$80" }, { name: "Expreso", price: "$40" }
+                    ]}
+                ]
+            }
+        ]
+    };
+
+    // ---------- Estado ----------
+    let state = null;
+    let activeTab = "global";
+    let dirty = false;
+
+    const $ = (id) => document.getElementById(id);
+
+    function setStatus(msg, isError) {
+        const s = $("status");
+        s.textContent = msg;
+        s.className = "text-xs " + (isError ? "text-red-400" : "text-white/60");
+        if (msg && !isError) setTimeout(() => { if (s.textContent === msg) s.textContent = ""; }, 4000);
+    }
+
+    // ---------- Helper para crear elementos ----------
+    function h(tag, props = {}, ...children) {
+        const e = document.createElement(tag);
+        for (const k in props) {
+            const v = props[k];
+            if (v == null) continue;
+            if (k === "class") e.className = v;
+            else if (k === "html") e.innerHTML = v;
+            else if (k === "value") e.value = v;
+            else if (k.startsWith("on") && typeof v === "function") e[k.toLowerCase()] = v;
+            else e.setAttribute(k, v);
+        }
+        for (const c of children.flat()) {
+            if (c == null || c === false) continue;
+            e.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+        }
+        return e;
+    }
+
+    // ---------- Controles reutilizables ----------
+    function textInput(value, placeholder, onInput) {
+        return h("input", {
+            class: "w-full bg-black/40 border border-white/15 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#F5C400]",
+            value: value || "", placeholder: placeholder || "",
+            oninput: (e) => { onInput(e.target.value); dirty = true; }
+        });
+    }
+    function textArea(value, placeholder, onInput) {
+        return h("textarea", {
+            class: "w-full bg-black/40 border border-white/15 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#F5C400]",
+            rows: "2", placeholder: placeholder || "",
+            oninput: (e) => { onInput(e.target.value); dirty = true; }
+        }, value || "");
+    }
+    function selectInput(value, options, onChange) {
+        const sel = h("select", {
+            class: "bg-black/40 border border-white/15 rounded-lg px-2 py-1.5 text-sm outline-none focus:border-[#F5C400]",
+            onchange: (e) => { onChange(e.target.value); }
+        });
+        options.forEach(o => {
+            const opt = h("option", { value: o.value }, o.label);
+            if (o.value === value) opt.selected = true;
+            sel.appendChild(opt);
+        });
+        return sel;
+    }
+    function labeled(label, control) {
+        return h("label", { class: "block" },
+            h("span", { class: "block text-xs uppercase tracking-wider text-white/50 mb-1" }, label),
+            control);
+    }
+    const B = {
+        primary: "bg-[#F5C400] text-black font-semibold px-4 py-2 rounded-lg hover:brightness-95 transition text-sm",
+        ghost: "bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg transition text-sm",
+        danger: "bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition text-sm"
+    };
+    function button(label, cls, onClick) {
+        return h("button", { class: cls, onclick: onClick }, label);
+    }
+
+    // Vista previa de imagen
+    function preview(url, w) {
+        const wrap = h("div", {
+            class: "relative rounded-lg overflow-hidden border border-white/15 bg-black/40 flex items-center justify-center shrink-0",
+            style: `width:${w}px;height:${Math.round(w * 0.64)}px`
+        });
+        const img = h("img", { class: "w-full h-full object-cover" });
+        const ph = h("div", { class: "absolute inset-0 flex flex-col items-center justify-center text-white/40 text-[10px] p-1 text-center break-all" },
+            h("i", { class: "fas fa-image text-lg mb-1" }), (url || "sin imagen"));
+        const isRemote = url && /^https?:\/\//.test(url);
+        ph.style.display = isRemote ? "none" : "flex";
+        img.onerror = () => { img.style.display = "none"; ph.style.display = "flex"; };
+        img.onload = () => { ph.style.display = "none"; };
+        if (url) img.src = url;
+        wrap.appendChild(img); wrap.appendChild(ph);
+        return wrap;
+    }
+
+    // ---------- Imágenes: comprimir + subir ----------
+    function compress(file, maxDim = 1600, quality = 0.85) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            const url = URL.createObjectURL(file);
+            img.onload = () => {
+                URL.revokeObjectURL(url);
+                let w = img.width, ht = img.height;
+                if (w > maxDim || ht > maxDim) {
+                    if (w >= ht) { ht = Math.round(ht * maxDim / w); w = maxDim; }
+                    else { w = Math.round(w * maxDim / ht); ht = maxDim; }
+                }
+                const canvas = document.createElement("canvas");
+                canvas.width = w; canvas.height = ht;
+                canvas.getContext("2d").drawImage(img, 0, 0, w, ht);
+                canvas.toBlob(b => b ? resolve(b) : reject(new Error("No se pudo procesar la imagen")), "image/jpeg", quality);
+            };
+            img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Archivo de imagen inválido")); };
+            img.src = url;
+        });
+    }
+    function pickImage() {
+        return new Promise(resolve => {
+            const input = document.createElement("input");
+            input.type = "file"; input.accept = "image/*";
+            input.onchange = () => resolve(input.files[0] || null);
+            input.click();
+        });
+    }
+    async function uploadImage(prefix) {
+        const file = await pickImage();
+        if (!file) return null;
+        try {
+            setStatus("Subiendo imagen…");
+            const blob = await compress(file);
+            const path = `menu/${prefix}_${Date.now()}.jpg`;
+            const sref = ref(storage, path);
+            await uploadBytes(sref, blob, { contentType: "image/jpeg" });
+            const url = await getDownloadURL(sref);
+            setStatus("Imagen subida ✓");
+            return url;
+        } catch (e) {
+            setStatus("Error al subir la imagen: " + e.message, true);
+            return null;
+        }
+    }
+    async function tryDelete(url) {
+        try {
+            if (url && /^https?:\/\//.test(url) && url.includes("firebasestorage")) {
+                await deleteObject(ref(storage, url));
+            }
+        } catch (e) { /* si falla el borrado del archivo viejo, no bloqueamos */ }
+    }
+
+    // ---------- Guardar ----------
+    async function save() {
+        try {
+            setStatus("Guardando…");
+            await setDoc(doc(db, "site", "menu"), state);
+            dirty = false;
+            setStatus("Guardado ✓ Ya se ve en el menú público.");
+        } catch (e) {
+            setStatus("Error al guardar: " + e.message, true);
+            alert("No se pudo guardar: " + e.message + "\n\nRevisa las reglas de seguridad de Firestore.");
+        }
+    }
+
+    // ---------- Render de pestañas ----------
+    function renderTabs() {
+        const tabs = $("tabs");
+        tabs.innerHTML = "";
+        const list = [{ key: "global", label: "🖼 Fondo y Logo" }]
+            .concat(state.sections.map(s => ({ key: s.id, label: s.title || s.id })));
+        list.forEach(t => {
+            const active = t.key === activeTab;
+            const b = h("button", {
+                class: "whitespace-nowrap px-3 py-1.5 rounded-full text-sm transition " +
+                    (active ? "bg-[#F5C400] text-black font-semibold" : "bg-white/10 hover:bg-white/20 text-white"),
+                onclick: () => { activeTab = t.key; renderEditor(); }
+            }, t.label);
+            tabs.appendChild(b);
+        });
+    }
+
+    // ---------- Panel global (fondo + logo) ----------
+    function globalPanel() {
+        const wrap = h("div", { class: "space-y-6" });
+
+        // Fondo
+        const bgCard = h("div", { class: "bg-[#161616] border border-white/10 rounded-2xl p-5" },
+            h("h3", { class: "font-semibold text-lg mb-1" }, "Foto de fondo"),
+            h("p", { class: "text-white/50 text-sm mb-4" }, "Se muestra detrás de todo el menú."),
+            h("div", { class: "flex items-center gap-4 flex-wrap" },
+                preview(state.background, 220),
+                button("Cambiar foto de fondo", B.primary, async () => {
+                    const url = await uploadImage("background");
+                    if (url) { const old = state.background; state.background = url; await save(); tryDelete(old); renderEditor(); }
+                })
+            )
+        );
+
+        // Logo
+        const logoCard = h("div", { class: "bg-[#161616] border border-white/10 rounded-2xl p-5" },
+            h("h3", { class: "font-semibold text-lg mb-1" }, "Logo (arriba a la derecha)"),
+            h("div", { class: "flex items-center gap-4 flex-wrap mt-3" },
+                preview(state.logo, 160),
+                button("Cambiar logo", B.ghost, async () => {
+                    const url = await uploadImage("logo");
+                    if (url) { const old = state.logo; state.logo = url; await save(); tryDelete(old); renderEditor(); }
+                })
+            )
+        );
+
+        // Restaurar por defecto
+        const dangerCard = h("div", { class: "bg-[#161616] border border-red-500/20 rounded-2xl p-5" },
+            h("h3", { class: "font-semibold text-lg mb-1 text-red-300" }, "Restaurar menú original"),
+            h("p", { class: "text-white/50 text-sm mb-4" }, "Vuelve todo el menú (textos, precios y fotos) a como venía de fábrica. Úsalo con cuidado."),
+            button("Restaurar todo por defecto", B.danger, async () => {
+                if (confirm("¿Seguro que quieres restaurar TODO el menú al original? Se perderán tus cambios de texto y las fotos que hayas subido dejarán de mostrarse.")) {
+                    state = JSON.parse(JSON.stringify(DEFAULT_DATA));
+                    await save();
+                    renderEditor();
+                }
+            })
+        );
+
+        wrap.appendChild(bgCard);
+        wrap.appendChild(logoCard);
+        wrap.appendChild(dangerCard);
+        return wrap;
+    }
+
+    // ---------- Panel de una sección ----------
+    function sectionPanel(sec) {
+        const wrap = h("div", { class: "space-y-6" });
+
+        // Datos de la sección
+        const head = h("div", { class: "bg-[#161616] border border-white/10 rounded-2xl p-5 space-y-4" },
+            labeled("Título de la sección", textInput(sec.title, "Ej. ALIMENTOS", v => sec.title = v)),
+            h("div", {},
+                h("span", { class: "block text-xs uppercase tracking-wider text-white/50 mb-1" }, "Foto de la sección (tarjeta)"),
+                h("div", { class: "flex items-center gap-4 flex-wrap" },
+                    preview(sec.img, 200),
+                    button("Cambiar foto de sección", B.ghost, async () => {
+                        const url = await uploadImage(`${sec.id}/portada`);
+                        if (url) { const old = sec.img; sec.img = url; await save(); tryDelete(old); renderEditor(); }
+                    })
+                )
+            )
+        );
+
+        // Carrusel
+        const carCard = h("div", { class: "bg-[#161616] border border-white/10 rounded-2xl p-5" },
+            h("div", { class: "flex items-center justify-between mb-3 flex-wrap gap-2" },
+                h("div", {},
+                    h("h3", { class: "font-semibold text-lg" }, "Fotos del carrusel"),
+                    h("p", { class: "text-white/50 text-sm" }, `${(sec.carousel || []).length} foto(s). Puedes agregar o quitar las que quieras.`)
+                ),
+                button("+ Agregar foto", B.primary, async () => {
+                    const url = await uploadImage(`${sec.id}/car`);
+                    if (url) { (sec.carousel = sec.carousel || []).push(url); await save(); renderEditor(); }
+                })
+            ),
+            (function () {
+                const grid = h("div", { class: "flex flex-wrap gap-3" });
+                (sec.carousel || []).forEach((url, i) => {
+                    const cell = h("div", { class: "relative" },
+                        preview(url, 150),
+                        h("button", {
+                            class: "absolute -top-2 -right-2 bg-red-600 hover:bg-red-500 text-white w-7 h-7 rounded-full text-sm shadow-lg",
+                            title: "Quitar esta foto",
+                            onclick: async () => {
+                                if (!confirm("¿Quitar esta foto del carrusel?")) return;
+                                const [removed] = sec.carousel.splice(i, 1);
+                                await save(); tryDelete(removed); renderEditor();
+                            }
+                        }, "✕")
+                    );
+                    grid.appendChild(cell);
+                });
+                if (!(sec.carousel || []).length) {
+                    grid.appendChild(h("p", { class: "text-white/40 text-sm" }, "No hay fotos en el carrusel."));
+                }
+                return grid;
+            })()
+        );
+
+        // Grupos y platillos
+        const groupsCard = h("div", { class: "space-y-4" });
+        groupsCard.appendChild(h("div", { class: "flex items-center justify-between flex-wrap gap-2" },
+            h("h3", { class: "font-semibold text-lg" }, "Menú de esta sección"),
+            button("+ Agregar grupo", B.ghost, () => {
+                sec.groups.push({ heading: "", layout: "list", items: [{ name: "", desc: "", price: "" }] });
+                dirty = true; renderEditor();
+            })
+        ));
+
+        (sec.groups || []).forEach((group, gi) => {
+            groupsCard.appendChild(groupCard(sec, group, gi));
+        });
+
+        // Nota al pie
+        const noteCard = h("div", { class: "bg-[#161616] border border-white/10 rounded-2xl p-5" },
+            labeled("Nota al pie (opcional, ej. 'Extras: ...')", textArea(sec.note, "Escribe una nota o déjala vacía", v => sec.note = v))
+        );
+
+        wrap.appendChild(head);
+        wrap.appendChild(carCard);
+        wrap.appendChild(groupsCard);
+        wrap.appendChild(noteCard);
+        return wrap;
+    }
+
+    // ---------- Tarjeta de un grupo ----------
+    function groupCard(sec, group, gi) {
+        const layoutOptions = [
+            { value: "list", label: "Lista con descripción y precio" },
+            { value: "grid2", label: "Cuadrícula (nombre — precio)" },
+            { value: "priceRow", label: "Lista simple (nombre + precio)" }
+        ];
+
+        const card = h("div", { class: "bg-[#161616] border border-white/10 rounded-2xl p-5 space-y-3" });
+
+        // Encabezado del grupo
+        card.appendChild(h("div", { class: "flex items-end gap-3 flex-wrap" },
+            h("div", { class: "flex-1 min-w-[180px]" },
+                labeled("Título del grupo (opcional)", textInput(group.heading, "Ej. HOGAZAS (deja vacío si no aplica)", v => group.heading = v))),
+            h("div", {},
+                h("span", { class: "block text-xs uppercase tracking-wider text-white/50 mb-1" }, "Estilo"),
+                selectInput(group.layout, layoutOptions, v => { group.layout = v; dirty = true; renderEditor(); })),
+            button("Quitar grupo", B.danger, () => {
+                if (confirm("¿Quitar este grupo completo con todos sus platillos?")) {
+                    sec.groups.splice(gi, 1); dirty = true; renderEditor();
+                }
+            })
+        ));
+
+        // Platillos
+        const itemsBox = h("div", { class: "space-y-2" });
+        (group.items || []).forEach((item, ii) => {
+            const showDesc = group.layout === "list";
+            const row = h("div", { class: "grid gap-2 items-start bg-black/20 rounded-xl p-3", style: "grid-template-columns: 1fr auto;" });
+
+            const fields = h("div", { class: "space-y-2" },
+                textInput(item.name, "Nombre del platillo", v => item.name = v),
+                showDesc ? textInput(item.desc, "Descripción (opcional)", v => item.desc = v) : null,
+                textInput(item.price, "Precio (ej. $120)", v => item.price = v)
+            );
+
+            const rm = button("✕", B.danger + " h-9", () => {
+                group.items.splice(ii, 1); dirty = true; renderEditor();
+            });
+
+            row.appendChild(fields);
+            row.appendChild(rm);
+            itemsBox.appendChild(row);
+        });
+        card.appendChild(itemsBox);
+
+        card.appendChild(button("+ Agregar platillo", B.ghost, () => {
+            group.items.push({ name: "", desc: "", price: "" });
+            dirty = true; renderEditor();
+        }));
+
+        return card;
+    }
+
+    // ---------- Render principal del editor ----------
+    function renderEditor() {
+        renderTabs();
+        const panel = $("panel");
+        panel.innerHTML = "";
+        if (activeTab === "global") {
+            panel.appendChild(globalPanel());
+        } else {
+            const sec = state.sections.find(s => s.id === activeTab) || state.sections[0];
+            if (sec) { activeTab = sec.id; panel.appendChild(sectionPanel(sec)); }
+        }
+    }
+
+    // ---------- Cargar datos ----------
+    async function loadData() {
+        setStatus("Cargando menú…");
+        const refDoc = doc(db, "site", "menu");
+        const snap = await getDoc(refDoc);
+        if (snap.exists()) {
+            state = snap.data();
+            // Asegurar estructura mínima
+            state.sections = state.sections || [];
+        } else {
+            state = JSON.parse(JSON.stringify(DEFAULT_DATA));
+            await setDoc(refDoc, state); // sembrar el menú por primera vez
+        }
+        dirty = false;
+        renderEditor();
+        setStatus("");
+    }
+
+    // ---------- Autenticación ----------
+    $("login-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const err = $("login-error");
+        err.textContent = "";
+        const btn = $("login-btn");
+        btn.disabled = true; btn.textContent = "Entrando…";
+        let usuario = $("usuario").value.trim();
+        const pass = $("password").value;
+        const email = usuario.includes("@") ? usuario : `${usuario}@${DOMINIO_ADMIN}`;
+        try {
+            await signInWithEmailAndPassword(auth, email, pass);
+        } catch (ex) {
+            const map = {
+                "auth/invalid-credential": "Usuario o contraseña incorrectos.",
+                "auth/wrong-password": "Contraseña incorrecta.",
+                "auth/user-not-found": "Ese usuario no existe. ¿Ya lo creaste en Firebase Authentication?",
+                "auth/invalid-email": "El usuario no es válido.",
+                "auth/operation-not-allowed": "Falta habilitar 'Email/Password' en Firebase Authentication.",
+                "auth/too-many-requests": "Demasiados intentos. Espera un momento e inténtalo de nuevo."
+            };
+            err.textContent = map[ex.code] || ("Error: " + ex.message);
+        } finally {
+            btn.disabled = false; btn.textContent = "Entrar";
+        }
+    });
+
+    $("logout-btn").addEventListener("click", () => {
+        if (dirty && !confirm("Tienes cambios de texto sin guardar. ¿Salir de todos modos?")) return;
+        signOut(auth);
+    });
+
+    $("save-btn").addEventListener("click", save);
+
+    window.addEventListener("beforeunload", (e) => {
+        if (dirty) { e.preventDefault(); e.returnValue = ""; }
+    });
+
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            $("login").classList.add("hidden");
+            $("app").classList.remove("hidden");
+            try { await loadData(); }
+            catch (e) { setStatus("Error al cargar: " + e.message, true); }
+        } else {
+            $("app").classList.add("hidden");
+            $("login").classList.remove("hidden");
+            $("password").value = "";
+        }
+    });
+</script>
+</body>
+</html>
