@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Membresía - Shell's Bread</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;500;600&display=swap');
+
+        :root {
+            --gold: #DBA23C;
+            --brown: #2A211A;
+            --brown-light: #3A2E24;
+            --cream: #F4EBDD;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { background: #111; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            color: #fff;
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background:
+                linear-gradient(rgba(15, 10, 6, 0.72), rgba(15, 10, 6, 0.88)),
+                url('font.png') center / cover no-repeat;
+        }
+
+        header {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 16px 20px 0;
+        }
+
+        .back {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            margin-left: -10px;
+            color: #fff;
+            font-size: 22px;
+            text-decoration: none;
+        }
+
+        main {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 4px 20px 48px;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(30px, 9vw, 38px);
+            line-height: 1.15;
+            text-align: center;
+        }
+
+        .lead {
+            margin: 10px auto 24px;
+            max-width: 340px;
+            text-align: center;
+            color: var(--cream);
+            line-height: 1.5;
+        }
+
+        .lead strong { color: var(--gold); }
+
+        /* Tarjeta */
+        .card {
+            background: linear-gradient(160deg, var(--brown-light), var(--brown));
+            border: 1px solid rgba(219, 162, 60, 0.45);
+            border-radius: 22px;
+            padding: 20px;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .card-logo {
+            display: block;
+            width: 190px;
+            max-width: 70%;
+            margin: 0 auto -18px;
+        }
+
+        .card-owner {
+            margin-top: 6px;
+            text-align: center;
+        }
+
+        .card-owner b { display: block; font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+        .card-owner span { font-size: 13px; color: var(--cream); opacity: 0.75; letter-spacing: 1px; }
+
+        .stamps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            max-width: 300px;
+            margin: 20px auto 16px;
+        }
+
+        .stamp {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 50%;
+            border: 2px dashed rgba(244, 235, 221, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(244, 235, 221, 0.4);
+            font-weight: 600;
+            font-size: 20px;
+        }
+
+        .stamp svg { display: none; width: 62%; height: 62%; }
+
+        .stamp.filled {
+            border: 2px solid var(--gold);
+            background: var(--gold);
+            color: var(--brown);
+        }
+
+        .stamp.filled svg { display: block; }
+        .stamp.filled span { display: none; }
+
+        .gift-tag {
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1px 7px;
+            border-radius: 20px;
+            background: #fff;
+            color: #8A5A0A;
+            font-size: 10px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .card-status {
+            text-align: center;
+            font-size: 14px;
+            color: var(--cream);
+            line-height: 1.45;
+        }
+
+        .card-status b { color: var(--gold); }
+
+        /* Formulario */
+        form { margin-top: 20px; }
+
+        label {
+            display: block;
+            margin-bottom: 14px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        label small { font-weight: 400; opacity: 0.7; }
+
+        input {
+            display: block;
+            width: 100%;
+            margin-top: 5px;
+            padding: 13px 14px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.45);
+            color: #fff;
+            font: inherit;
+            font-size: 16px; /* evita el zoom automático en iPhone */
+            outline: none;
+        }
+
+        input:focus { border-color: var(--gold); }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 14px 16px;
+            border: none;
+            border-radius: 14px;
+            font: inherit;
+            font-weight: 600;
+            font-size: 16px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .btn:active { transform: scale(0.98); }
+        .btn[disabled] { cursor: wait; opacity: 0.6; }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #FF6200, #FFAA00);
+            color: #fff;
+            font-size: 18px;
+        }
+
+        .btn-wallet {
+            background: #000;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+        }
+
+        .btn-wallet i { font-size: 22px; }
+
+        .btn-wallet.soon {
+            background: rgba(0, 0, 0, 0.45);
+            color: rgba(255, 255, 255, 0.6);
+            cursor: default;
+        }
+
+        .btn-wallet.soon small { font-weight: 400; font-size: 12px; }
+
+        .btn-link {
+            background: none;
+            color: var(--cream);
+            font-weight: 500;
+            font-size: 14px;
+            text-decoration: underline;
+        }
+
+        .fineprint {
+            margin-top: 12px;
+            font-size: 12px;
+            line-height: 1.4;
+            text-align: center;
+            color: var(--cream);
+            opacity: 0.75;
+        }
+
+        .message {
+            margin-top: 14px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        .message.error { background: rgba(190, 40, 30, 0.35); border: 1px solid rgba(255, 120, 100, 0.6); }
+        .message.ok { background: rgba(219, 162, 60, 0.18); border: 1px solid var(--gold); text-align: center; margin: 0 0 16px; }
+        .message a { color: #fff; font-weight: 600; }
+
+        .section-title {
+            margin: 26px 0 10px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--cream);
+        }
+
+        .wallet-buttons { display: grid; gap: 10px; }
+
+        .qr {
+            width: 196px;
+            margin: 0 auto;
+            padding: 10px;
+            border-radius: 14px;
+            background: #fff;
+        }
+
+        .qr svg { display: block; width: 100%; height: auto; }
+
+        .terms {
+            margin-top: 16px;
+            font-size: 13px;
+            color: var(--cream);
+        }
+
+        .terms summary { cursor: pointer; text-align: center; font-weight: 500; }
+        .terms p { margin-top: 8px; line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; }
+
+        [hidden] { display: none !important; }
+    </style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="wheat" viewBox="0 0 24 24">
+        <path d="M12 23V8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"/>
+        <ellipse cx="12" cy="4.4" rx="2" ry="3.4" fill="currentColor"/>
+        <g fill="currentColor">
+            <ellipse cx="8.1" cy="9.7" rx="1.9" ry="3.3" transform="rotate(-38 8.1 9.7)"/>
+            <ellipse cx="15.9" cy="9.7" rx="1.9" ry="3.3" transform="rotate(38 15.9 9.7)"/>
+            <ellipse cx="8.1" cy="14.2" rx="1.9" ry="3.3" transform="rotate(-38 8.1 14.2)"/>
+            <ellipse cx="15.9" cy="14.2" rx="1.9" ry="3.3" transform="rotate(38 15.9 14.2)"/>
+            <ellipse cx="8.1" cy="18.7" rx="1.9" ry="3.3" transform="rotate(-38 8.1 18.7)"/>
+            <ellipse cx="15.9" cy="18.7" rx="1.9" ry="3.3" transform="rotate(38 15.9 18.7)"/>
+        </g>
+    </symbol>
+</svg>
+
+<header>
+    <a class="back" href="index.html" aria-label="Regresar al inicio"><i class="fas fa-arrow-left"></i></a>
+</header>
+
+<main>
+    <p id="loading" class="lead">Cargando…</p>
+
+    <!-- ============ REGISTRO ============ -->
+    <section id="view-join" hidden>
+        <h1>Tarjeta de fidelidad</h1>
+        <p class="lead" id="join-lead"></p>
+
+        <div class="card">
+            <img class="card-logo" src="log.png" alt="Shell's Bread">
+            <div class="stamps" id="join-stamps"></div>
+        </div>
+
+        <details class="terms" data-terms hidden><summary>Reglas y condiciones</summary><p></p></details>
+
+        <form id="join-form" novalidate>
+            <label>Nombre
+                <input id="name" type="text" autocomplete="name" maxlength="80" required>
+            </label>
+            <label>Teléfono <small>(10 dígitos)</small>
+                <input id="phone" type="tel" autocomplete="tel-national" inputmode="numeric" maxlength="20" required>
+            </label>
+            <label>Correo <small>(opcional)</small>
+                <input id="email" type="email" autocomplete="email" maxlength="120">
+            </label>
+            <button id="join-btn" class="btn btn-primary" type="submit">Obtener mi tarjeta</button>
+            <div id="join-error" class="message error" role="alert" hidden></div>
+            <p class="fineprint">Usaremos tus datos solo para administrar tu tarjeta. Una tarjeta por teléfono.</p>
+        </form>
+
+        <a id="lost-link" class="btn btn-link" target="_blank" rel="noopener" style="margin-top:10px">Ya tengo tarjeta y no la encuentro</a>
+    </section>
+
+    <!-- ============ TARJETA ============ -->
+    <section id="view-card" hidden>
+        <div id="welcome" class="message ok" hidden></div>
+
+        <div class="card">
+            <img class="card-logo" src="log.png" alt="Shell's Bread">
+            <div class="card-owner">
+                <b id="card-name"></b>
+                <span id="card-code"></span>
+            </div>
+            <div class="stamps" id="card-stamps"></div>
+            <p class="card-status" id="card-status"></p>
+        </div>
+
+        <h2 class="section-title">Guárdala en tu celular</h2>
+        <div class="wallet-buttons">
+            <a id="wallet-apple" class="btn btn-wallet"></a>
+            <a id="wallet-google" class="btn btn-wallet"></a>
+        </div>
+
+        <h2 class="section-title">Muestra este código en caja para recibir tu sello</h2>
+        <div class="qr" id="card-qr"></div>
+
+        <button id="copy-link" class="btn btn-link" type="button" style="margin-top:14px">Copiar el enlace de mi tarjeta</button>
+
+        <details class="terms" data-terms hidden><summary>Reglas y condiciones</summary><p></p></details>
+    </section>
+
+    <div id="fatal" class="message error" role="alert" hidden></div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script type="module">
+    import { app } from "./firebase-init.js";
+    import { getFirestore, doc, getDoc, onSnapshot, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    // ---------- Ajustes ----------
+    // Sellos, premio y condiciones se editan en admin.html, pestaña Programa.
+    const DEFAULT_PROGRAM = { totalStamps: 6, giftStamps: 2, rewardText: "tu premio", conditions: "" };
+    const WHATSAPP = "528717345351";
+
+    // Cambia apple/google a true cuando termines los pasos de WALLET_SETUP.md
+    const WALLET = {
+        apple: false,
+        google: false,
+        baseUrl: "https://us-central1-shells-menu.cloudfunctions.net"
+    };
+
+    // ---------- Utilidades ----------
+    const db = getFirestore(app);
+    const $ = (id) => document.getElementById(id);
+    const STORAGE_KEY = "shells_member_id";
+    const programRef = doc(db, "site", "program");
+    let program = DEFAULT_PROGRAM;
+    let currentCard = null; // { id, member } de la tarjeta en pantalla
+
+    const toProgram = (snap) => ({ ...DEFAULT_PROGRAM, ...(snap.exists() ? snap.data() : {}) });
+
+    function esc(text) {
+        const el = document.createElement("div");
+        el.textContent = text;
+        return el.innerHTML;
+    }
+
+    const stored = {
+        get() { try { return localStorage.getItem(STORAGE_KEY); } catch { return null; } },
+        set(id) { try { localStorage.setItem(STORAGE_KEY, id); } catch { /* el enlace ?id= sigue funcionando */ } },
+        clear() { try { localStorage.removeItem(STORAGE_KEY); } catch { /* nada que limpiar */ } }
+    };
+
+    function randomId() {
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    // Acepta "871 734 5351", "+52 1 871..." y devuelve 10 dígitos; "" si no es válido.
+    function normalizePhone(raw) {
+        const digits = raw.replace(/\D/g, "").replace(/^(?:521|52)(?=\d{10}$)/, "");
+        return /^\d{10}$/.test(digits) ? digits : "";
+    }
+
+    function whatsappUrl(text) {
+        return `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(text)}`;
+    }
+
+    function renderStamps(container, filled, showGift) {
+        const total = program.totalStamps;
+        container.innerHTML = "";
+        container.style.gridTemplateColumns = `repeat(${total <= 3 ? total : total <= 6 ? 3 : 4}, 1fr)`;
+        for (let i = 0; i < total; i++) {
+            const stamp = document.createElement("div");
+            stamp.className = "stamp" + (i < filled ? " filled" : "");
+            stamp.innerHTML = `<span>${i + 1}</span><svg aria-hidden="true"><use href="#wheat"></use></svg>`;
+            if (showGift && i < program.giftStamps) {
+                stamp.insertAdjacentHTML("beforeend", `<span class="gift-tag" style="display:block">Regalo</span>`);
+            }
+            container.appendChild(stamp);
+        }
+    }
+
+    function show(view) {
+        $("loading").hidden = true;
+        $("view-join").hidden = view !== "join";
+        $("view-card").hidden = view !== "card";
+    }
+
+    // ---------- Vista de registro ----------
+    function renderJoinIntro() {
+        renderStamps($("join-stamps"), program.giftStamps, true);
+        const gift = program.giftStamps;
+        $("join-lead").innerHTML = `Junta <strong>${program.totalStamps} ${program.totalStamps === 1 ? "sello" : "sellos"}</strong> y gana ${esc(program.rewardText)}.`
+            + (gift > 0 ? ` Regístrate hoy y <strong>te ${gift === 1 ? "regalamos 1" : `regalamos ${gift}`}</strong>.` : "");
+    }
+
+    function renderTerms() {
+        document.querySelectorAll("[data-terms]").forEach((terms) => {
+            terms.hidden = !program.conditions;
+            terms.querySelector("p").textContent = program.conditions;
+        });
+    }
+
+    function showJoin() {
+        renderJoinIntro();
+        $("lost-link").href = whatsappUrl("Hola, ya tengo tarjeta de fidelidad y no la encuentro. Mi teléfono es: ");
+        show("join");
+    }
+
+    function showJoinError(html) {
+        $("join-error").innerHTML = html;
+        $("join-error").hidden = false;
+    }
+
+    $("join-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        $("join-error").hidden = true;
+
+        const name = $("name").value.trim().replace(/\s+/g, " ");
+        const phone = normalizePhone($("phone").value);
+        const email = $("email").value.trim();
+
+        if (name.length < 2) return showJoinError("Escribe tu nombre.");
+        if (!phone) return showJoinError("Escribe un teléfono de 10 dígitos.");
+        if (email && !$("email").checkValidity()) return showJoinError("Revisa tu correo o déjalo vacío.");
+
+        const button = $("join-btn");
+        button.disabled = true;
+        button.textContent = "Creando tu tarjeta…";
+
+        const id = randomId();
+        const member = {
+            name, phone,
+            stamps: program.giftStamps,
+            redeemed: 0,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        };
+        if (email) member.email = email;
+
+        try {
+            // Por si cambiaron los sellos de regalo desde que se abrió la página.
+            program = toProgram(await getDoc(programRef));
+            member.stamps = program.giftStamps;
+
+            const batch = writeBatch(db);
+            batch.set(doc(db, "members", id), member);
+            batch.set(doc(db, "memberPhones", phone), { memberId: id });
+            await batch.commit();
+
+            stored.set(id);
+            history.replaceState(null, "", `?id=${id}`);
+            const gift = program.giftStamps;
+            $("welcome").innerHTML = gift > 0
+                ? `¡Listo! Ya tienes ${gift === 1 ? "tu <b>sello de regalo</b>" : `tus <b>${gift} sellos de regalo</b>`}.`
+                : "¡Listo! Ya tienes tu tarjeta.";
+            $("welcome").hidden = false;
+            showCard(id);
+        } catch (err) {
+            console.error("No se pudo crear la tarjeta:", err);
+            if (err.code === "permission-denied") {
+                // Las reglas solo rechazan aquí un teléfono ya registrado: el resto se validó arriba.
+                const url = whatsappUrl(`Hola, ya tengo tarjeta de fidelidad y no la encuentro. Mi teléfono es: ${phone}`);
+                showJoinError(`Ese teléfono ya tiene una tarjeta. <a href="${url}" target="_blank" rel="noopener">Escríbenos por WhatsApp</a> y te la enviamos.`);
+            } else {
+                showJoinError("No pudimos crear tu tarjeta. Revisa tu conexión e inténtalo de nuevo.");
+            }
+        } finally {
+            button.disabled = false;
+            button.textContent = "Obtener mi tarjeta";
+        }
+    });
+
+    // ---------- Vista de tarjeta ----------
+    function setupWalletButton(el, enabled, url, iconClass, label) {
+        el.innerHTML = `<i class="${iconClass}"></i><span>Agregar a ${label}</span>`;
+        if (enabled) {
+            el.href = url;
+        } else {
+            el.classList.add("soon");
+            el.setAttribute("aria-disabled", "true");
+            el.insertAdjacentHTML("beforeend", "<small>Próximamente</small>");
+        }
+    }
+
+    function renderCard(id, member) {
+        currentCard = { id, member };
+        const total = program.totalStamps;
+        const stamps = Math.min(member.stamps || 0, total);
+        const left = total - stamps;
+        const reward = esc(program.rewardText);
+
+        $("card-name").textContent = member.name;
+        $("card-code").textContent = "SB-" + id.slice(0, 6).toUpperCase();
+        renderStamps($("card-stamps"), stamps, false);
+
+        $("card-status").innerHTML = left === 0
+            ? `<b>¡Completaste tu tarjeta!</b><br>Muéstrala en caja para recibir ${reward}.`
+            : `Tienes <b>${stamps} de ${total}</b> sellos. Te ${left === 1 ? "falta 1" : `faltan ${left}`} para ${reward}.`;
+    }
+
+    let unsubscribe = null;
+
+    function showCard(id) {
+        if (unsubscribe) unsubscribe();
+
+        setupWalletButton($("wallet-apple"), WALLET.apple, `${WALLET.baseUrl}/apple-pass/pass?id=${id}`, "fa-brands fa-apple", "Apple Wallet");
+        setupWalletButton($("wallet-google"), WALLET.google, `${WALLET.baseUrl}/google-pass?id=${id}`, "fa-brands fa-google", "Google Wallet");
+
+        if (window.qrcode) {
+            const scanUrl = new URL(`admin.html?miembro=${id}`, location.href).href;
+            const qr = window.qrcode(0, "M");
+            qr.addData(scanUrl);
+            qr.make();
+            $("card-qr").innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+        } else {
+            $("card-qr").hidden = true;
+        }
+
+        unsubscribe = onSnapshot(doc(db, "members", id), (snap) => {
+            if (!snap.exists()) {
+                stored.clear();
+                history.replaceState(null, "", location.pathname);
+                showJoin();
+                return;
+            }
+            stored.set(id);
+            renderCard(id, snap.data());
+            show("card");
+        }, (err) => {
+            console.error("No se pudo abrir la tarjeta:", err);
+            $("loading").hidden = true;
+            $("fatal").textContent = "No pudimos abrir tu tarjeta. Revisa tu conexión y vuelve a intentarlo.";
+            $("fatal").hidden = false;
+        });
+    }
+
+    $("copy-link").addEventListener("click", async (e) => {
+        const button = e.currentTarget;
+        const label = button.textContent;
+        try {
+            await navigator.clipboard.writeText(location.href);
+            button.textContent = "¡Enlace copiado!";
+        } catch {
+            button.textContent = "Copia el enlace de la barra del navegador";
+        }
+        setTimeout(() => { button.textContent = label; }, 2500);
+    });
+
+    // ---------- Inicio ----------
+    // Los cambios hechos en admin se ven al instante, aunque la página ya esté abierta.
+    onSnapshot(programRef, (snap) => {
+        program = toProgram(snap);
+        renderTerms();
+        if (!$("view-join").hidden) renderJoinIntro();
+        if (currentCard) renderCard(currentCard.id, currentCard.member);
+    }, (err) => console.warn("Programa no disponible, usando valores por defecto:", err));
+
+    const urlId = new URLSearchParams(location.search).get("id");
+    const memberId = /^[0-9a-f]{32}$/.test(urlId || "") ? urlId : stored.get();
+
+    if (memberId) {
+        if (!urlId) history.replaceState(null, "", `?id=${memberId}`);
+        showCard(memberId);
+    } else {
+        showJoin();
+    }
+</script>
+</body>
+</html>

@@ -14,8 +14,9 @@
     body {
       font-family: 'Arial', sans-serif;
       color: white;
-      overflow: hidden;
-      height: 100vh;
+      overflow-x: hidden;
+      min-height: 100vh;
+      min-height: 100dvh;
     }
 
     /* Fondo en video */
@@ -35,7 +36,9 @@
     .container {
       position: relative;
       z-index: 2;
-      height: 100vh;
+      min-height: 100vh;
+      min-height: 100dvh;
+      gap: 24px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -45,8 +48,8 @@
 
     /* Logo sin efecto neón */
     .logo {
-      margin-top: 120px;     /* Bajado un poco más */
-      width: 280px;
+      margin-top: clamp(80px, 15vh, 120px);
+      width: min(280px, 75vw);
       transition: all 0.4s ease;
     }
 
@@ -58,6 +61,7 @@
     .top-bar {
       position: absolute;
       top: 20px;
+      left: 0;
       width: 100%;
       display: flex;
       justify-content: space-between;
@@ -94,22 +98,23 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 25px;
-      margin-bottom: 80px;
+      gap: clamp(14px, 2.5vh, 25px);
+      width: 100%;
+      margin-bottom: clamp(24px, 8vh, 80px);
     }
 
     .btn {
-      padding: 18px 50px;
-      font-size: 28px;
+      padding: clamp(12px, 2vh, 18px) 16px;
+      font-size: clamp(20px, 6vw, 28px);
       font-weight: bold;
       text-transform: uppercase;
-      letter-spacing: 3px;
+      letter-spacing: 2px;
       border: none;
       border-radius: 50px;
       cursor: pointer;
       transition: all 0.4s;
       text-align: center;
-      min-width: 280px;
+      width: min(100%, 340px);
     }
 
     .btn-menu {
@@ -118,6 +123,15 @@
     }
 
     .btn-menu:hover {
+      transform: translateY(-5px) scale(1.05);
+    }
+
+    .btn-membresia {
+      background: #fff;
+      color: #B4700F;
+    }
+
+    .btn-membresia:hover {
       transform: translateY(-5px) scale(1.05);
     }
 
@@ -145,14 +159,14 @@
     <!-- Barra superior con iconos -->
     <div class="top-bar">
       <!-- Instagram -->
-      <a href="https://www.instagram.com/shells_bread" target="_blank">
+      <a href="https://www.instagram.com/shells_bread" target="_blank" rel="noopener">
         <div class="icon-btn">
           <img src="ig.png" alt="Instagram">
         </div>
       </a>
 
       <!-- WhatsApp -->
-      <a href="https://wa.me/528717345351?text=Hola%20Marce%2C%20quisiera%20hacerte%20un%20pedido%20porfavor." target="_blank">
+      <a href="https://wa.me/528717345351?text=Hola%20Marce%2C%20quisiera%20hacerte%20un%20pedido%20porfavor." target="_blank" rel="noopener">
         <div class="icon-btn">
           <img src="tel.png" alt="WhatsApp">
         </div>
@@ -167,8 +181,12 @@
       <button class="btn btn-menu" onclick="window.location.href='menu.html'">
         MENÚ
       </button>
-      
-      <button class="btn btn-recomendar" onclick="window.open('https://maps.app.goo.gl/EN3fVNwzhTC5LDzV8?g_st=ic', '_blank')">
+
+      <button class="btn btn-membresia" onclick="window.location.href='membresia.html'">
+        MEMBRESÍA
+      </button>
+
+      <button class="btn btn-recomendar" onclick="window.open('https://maps.app.goo.gl/EN3fVNwzhTC5LDzV8?g_st=ic', '_blank', 'noopener')">
         RECOMIÉNDANOS
       </button>
     </div>

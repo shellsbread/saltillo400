@@ -162,7 +162,7 @@
 </main>
 
 <!-- Modal -->
-<div id="modal" class="modal fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+<div id="modal" class="modal fixed inset-0 z-50 hidden flex items-center justify-center p-4" onclick="if (event.target === this) closeModal()">
     <div class="modal-content rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-y-auto relative border border-[#F5C400]/30 shadow-2xl">
         <button onclick="closeModal()"
                 class="absolute top-4 right-4 text-5xl text-white/80 hover:text-white z-20 transition">×</button>
@@ -172,20 +172,9 @@
 
 <!-- ============ FIREBASE (lectura en tiempo real) ============ -->
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { app } from "./firebase-init.js";
     import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyBE-mzDUK8VaZ7zqeb2EwQkmSrj56VJrWo",
-        authDomain: "menushellsdi.firebaseapp.com",
-        projectId: "menushellsdi",
-        storageBucket: "menushellsdi.firebasestorage.app",
-        messagingSenderId: "250584423092",
-        appId: "1:250584423092:web:dd90a122dfd870e25fd5e1",
-        measurementId: "G-CHHQL5X9SB"
-    };
-
-    const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
     // Escucha en tiempo real: cualquier cambio del admin se ve al instante.
@@ -212,7 +201,7 @@
         sections: [
             {
                 id: "alimentos", title: "ALIMENTOS", img: "alimentos.png",
-                carousel: ["carualimentos1.png", "carualimentos2.png", "carualimentos3.png"],
+                carousel: [],
                 note: "",
                 groups: [{ heading: "", layout: "list", items: [
                     { name: "NEW YORK", desc: "Pastrami, Mozzarella, Tomate Cherry, mix de lechugas y aderezo de la casa sobre focaccia", price: "$220" },
@@ -223,7 +212,7 @@
             },
             {
                 id: "desayunos", title: "DESAYUNOS", img: "desayunos.png",
-                carousel: ["cardesayunos1.png", "cardesayunos2.png", "cardesayunos3.png"],
+                carousel: [],
                 note: "",
                 groups: [{ heading: "", layout: "list", items: [
                     { name: "HUEVOS MEDITERRÁNEOS", desc: "2 huevos estrellados tiernos sobre cama de xocodip sazonado en Shell's", price: "$160" },
@@ -234,7 +223,7 @@
             },
             {
                 id: "pan-salado", title: "PAN SALADO", img: "pan-salado.png",
-                carousel: ["carpansalado1.png", "carpansalado2.png", "carpansalado3.png"],
+                carousel: [],
                 note: "",
                 groups: [
                     { heading: "HOGAZAS", layout: "grid2", items: [
@@ -262,7 +251,7 @@
             },
             {
                 id: "pan-dulce", title: "PAN DULCE", img: "pan-dulce.png",
-                carousel: ["carpandulce1.png", "carpandulce2.png", "carpandulce3.png"],
+                carousel: [],
                 note: "",
                 groups: [{ heading: "", layout: "priceRow", items: [
                     { name: "Conchas (Vainilla y Chocolate)", price: "$50" },
@@ -279,7 +268,7 @@
             },
             {
                 id: "bebidas", title: "BEBIDAS", img: "bebidas.png",
-                carousel: ["carbebidas1.png", "carbebidas2.png", "carbebidas3.png"],
+                carousel: [],
                 note: "Extras: Esencia de Lavanda / Vainilla / Mocha / Caramelo / Salted Chocolate Caramel",
                 groups: [
                     { heading: "EN LAS ROCAS", layout: "priceRow", items: [
@@ -365,7 +354,7 @@
 
         images.forEach((img, index) => {
             html += `
-                <div class="carousel-slide ${index === 0 ? '' : 'hidden'}" data-index="${index}">
+                <div class="carousel-slide" data-index="${index}">
                     <img src="${esc(img)}" alt="${esc(sec.id)} ${index + 1}">
                 </div>`;
         });
@@ -409,14 +398,9 @@
     function updateCarousel(sectionId) {
         const inner = document.getElementById(`inner-${sectionId}`);
         if (!inner) return;
-        const slides = inner.querySelectorAll('.carousel-slide');
         const dots = document.querySelectorAll(`#dots-${sectionId} .dot`);
 
         inner.style.transform = `translateX(-${currentSlides[sectionId] * 100}%)`;
-
-        slides.forEach((slide, i) => {
-            slide.classList.toggle('hidden', i !== currentSlides[sectionId]);
-        });
 
         dots.forEach((dot, i) => dot.classList.toggle('active', i === currentSlides[sectionId]));
     }
@@ -470,7 +454,7 @@
         const content = document.getElementById('modal-content');
 
         let html = `
-            <h2 class="logo-font text-5xl font-bold text-center mb-8 text-white">${esc(sec.title)}</h2>
+            <h2 class="logo-font text-4xl sm:text-5xl font-bold text-center mt-6 mb-8 text-white">${esc(sec.title)}</h2>
             ${createCarousel(sec)}
             <div class="space-y-8">
         `;
@@ -484,7 +468,7 @@
         modal.classList.remove('hidden');
         modal.classList.add('flex');
 
-        setTimeout(() => initCarousel(sec.id), 150);
+        initCarousel(sec.id);
     }
 
     window.closeModal = function () {
