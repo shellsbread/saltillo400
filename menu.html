@@ -4,11 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menú - Shell's Bread</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <meta name="description" content="Menú de Shell's Bread: alimentos, desayunos, pan salado, pan dulce y bebidas.">
+    <meta name="theme-color" content="#111111">
+    <link rel="icon" href="wallet/icono-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;500&display=swap">
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <link rel="preconnect" href="https://firestore.googleapis.com">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;500&display=swap');
-
         /* Color de respaldo SOLO en html, para no tapar la imagen del ::before */
         html {
             background-color: #111111;
@@ -28,7 +32,7 @@
             position: fixed;
             inset: 0;
             z-index: -1;
-            background-image: var(--bg-image, url('font.png'));
+            background-image: var(--bg-image, url('font.webp'));
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -60,7 +64,7 @@
         }
 
         .modal {
-            background-image: var(--bg-image, url('font.png'));
+            background-image: var(--bg-image, url('font.webp'));
             background-size: cover;
             background-position: center;
         }
@@ -139,16 +143,18 @@
             transform: scale(1.4);
         }
     </style>
+    <link rel="stylesheet" href="tailwind.css">
 </head>
 <body class="overflow-x-hidden">
+<script src="loader.js" data-images="font.webp"></script>
 
 <header class="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
     <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-        <a href="index.html" class="flex items-center gap-2 text-white hover:text-orange-400 transition-colors">
-            <i class="fas fa-arrow-left text-2xl"></i>
+        <a href="index.html" aria-label="Regresar al inicio" class="flex items-center gap-2 text-white hover:text-orange-400 transition-colors">
+            <svg class="w-6 h-6" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true"><path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.2 288 416 288c17.7 0 32-14.3 32-32s-14.3-32-32-32l-306.7 0L214.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg>
             <span class="text-sm font-medium tracking-wider hidden sm:block">REGRESAR AL INICIO</span>
         </a>
-        <img id="site-logo" src="log.png" alt="Shell's Bread" class="h-14 w-auto">
+        <img id="site-logo" src="log.webp" alt="Shell's Bread" class="h-14 w-auto">
         <div class="w-9"></div>
     </div>
 </header>
@@ -164,7 +170,7 @@
 <!-- Modal -->
 <div id="modal" class="modal fixed inset-0 z-50 hidden flex items-center justify-center p-4" onclick="if (event.target === this) closeModal()">
     <div class="modal-content rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-y-auto relative border border-[#F5C400]/30 shadow-2xl">
-        <button onclick="closeModal()"
+        <button onclick="closeModal()" aria-label="Cerrar"
                 class="absolute top-4 right-4 text-5xl text-white/80 hover:text-white z-20 transition">×</button>
         <div class="p-8 sm:p-12" id="modal-content"></div>
     </div>
@@ -177,6 +183,9 @@
 
     const db = getFirestore(app);
 
+    let firstAnswer;
+    window.ShellsLoader?.wait(new Promise((resolve) => { firstAnswer = resolve; }));
+
     // Escucha en tiempo real: cualquier cambio del admin se ve al instante.
     onSnapshot(doc(db, "site", "menu"), (snap) => {
         if (snap.exists()) {
@@ -185,10 +194,12 @@
             window.MENU_DATA = window.DEFAULT_DATA;
         }
         window.renderAll();
+        firstAnswer();
     }, (err) => {
         console.warn("Firebase sin conexión, mostrando menú por defecto:", err);
         window.MENU_DATA = window.MENU_DATA || window.DEFAULT_DATA;
         window.renderAll();
+        firstAnswer();
     });
 </script>
 
@@ -300,6 +311,11 @@
             .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     }
 
+    // Las fotos que vienen con el sitio tienen una versión ligera. Las subidas desde admin ya van comprimidas.
+    function optimized(src) {
+        return /^[\w-]+\.png$/.test(src || "") ? src.replace(/\.png$/, ".webp") : src;
+    }
+
     function noteHtml(note) {
         if (!note) return "";
         const i = note.indexOf(":");
@@ -308,13 +324,19 @@
     }
 
     // ---------- Render global ----------
+    let lastRendered = "";
+
     window.renderAll = function () {
         const data = window.MENU_DATA || window.DEFAULT_DATA;
+        // Si Firebase responde con lo mismo que ya se ve, no se redibuja ni se repite la animación.
+        const rendered = JSON.stringify(data);
+        if (rendered === lastRendered) return;
+        lastRendered = rendered;
         // Fondo
-        document.documentElement.style.setProperty('--bg-image', `url("${(data.background || 'font.png')}")`);
+        document.documentElement.style.setProperty('--bg-image', `url("${optimized(data.background || 'font.png')}")`);
         // Logo
         const logo = document.getElementById('site-logo');
-        if (logo && data.logo) logo.src = data.logo;
+        if (logo && data.logo) logo.src = optimized(data.logo);
         // Categorías
         renderCategories(data);
     };
@@ -327,7 +349,7 @@
             card.className = `category-card w-full aspect-video relative`;
             card.innerHTML = `
                 <div class="category-image-container rounded-3xl overflow-hidden shadow-xl">
-                    <img src="${esc(sec.img)}" class="w-full h-full object-cover" alt="${esc(sec.title)}">
+                    <img src="${esc(optimized(sec.img))}" ${index < 2 ? "" : 'loading="lazy"'} decoding="async" class="w-full h-full object-cover" alt="${esc(sec.title)}">
                 </div>
                 <div class="absolute inset-x-0 bottom-8">
                     <div class="text-center">
@@ -355,15 +377,15 @@
         images.forEach((img, index) => {
             html += `
                 <div class="carousel-slide" data-index="${index}">
-                    <img src="${esc(img)}" alt="${esc(sec.id)} ${index + 1}">
+                    <img src="${esc(optimized(img))}" alt="${esc(sec.title)} ${index + 1}">
                 </div>`;
         });
 
         html += `</div>`;
         if (images.length > 1) {
             html += `
-                <button class="carousel-btn carousel-prev" onclick="prevSlide('${sec.id}')">‹</button>
-                <button class="carousel-btn carousel-next" onclick="nextSlide('${sec.id}')">›</button>
+                <button class="carousel-btn carousel-prev" onclick="prevSlide('${sec.id}')" aria-label="Foto anterior">‹</button>
+                <button class="carousel-btn carousel-next" onclick="nextSlide('${sec.id}')" aria-label="Foto siguiente">›</button>
                 <div class="carousel-dots" id="dots-${sec.id}"></div>`;
         }
         html += `</div>`;
@@ -467,6 +489,7 @@
         content.innerHTML = html;
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
 
         initCarousel(sec.id);
     }
@@ -475,6 +498,7 @@
         const modal = document.getElementById('modal');
         modal.classList.add('hidden');
         modal.classList.remove('flex');
+        document.body.style.overflow = '';
         Object.values(autoIntervals).forEach(interval => clearInterval(interval));
         autoIntervals = {};
     };

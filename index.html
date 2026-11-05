@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Shell's Bread</title>
+  <meta name="description" content="Shell's Bread, pan de masa madre. Consulta nuestro menú, obtén tu tarjeta de fidelidad y haz tu pedido.">
+  <meta name="theme-color" content="#1C1510">
+  <link rel="icon" href="wallet/icono-192.png">
+  <link rel="preload" as="image" href="fon-poster.webp">
   <style>
     * {
       margin: 0;
@@ -14,6 +18,7 @@
     body {
       font-family: 'Arial', sans-serif;
       color: white;
+      background: #1C1510;
       overflow-x: hidden;
       min-height: 100vh;
       min-height: 100dvh;
@@ -148,9 +153,10 @@
   </style>
 </head>
 <body>
+  <script src="loader.js"></script>
 
   <!-- Video de fondo -->
-  <video id="background-video" autoplay muted loop playsinline>
+  <video id="background-video" autoplay muted loop playsinline preload="auto" poster="fon-poster.webp">
     <source src="fon.mp4" type="video/mp4">
   </video>
 
@@ -161,20 +167,20 @@
       <!-- Instagram -->
       <a href="https://www.instagram.com/shells_bread" target="_blank" rel="noopener">
         <div class="icon-btn">
-          <img src="ig.png" alt="Instagram">
+          <img src="ig.webp" alt="Instagram" width="40" height="40">
         </div>
       </a>
 
       <!-- WhatsApp -->
       <a href="https://wa.me/528717345351?text=Hola%20Marce%2C%20quisiera%20hacerte%20un%20pedido%20porfavor." target="_blank" rel="noopener">
         <div class="icon-btn">
-          <img src="tel.png" alt="WhatsApp">
+          <img src="tel.webp" alt="WhatsApp" width="40" height="40">
         </div>
       </a>
     </div>
 
     <!-- Logo -->
-    <img src="log.png" alt="Logo Shell's Bread" class="logo">
+    <img src="log.webp" alt="Logo Shell's Bread" class="logo" width="600" height="243" style="height:auto">
 
     <!-- Botones principales -->
     <div class="main-buttons">

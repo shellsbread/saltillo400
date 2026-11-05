@@ -4,10 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Membresía - Shell's Bread</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <meta name="description" content="Tarjeta de fidelidad de Shell's Bread: junta sellos y gana premios.">
+    <meta name="theme-color" content="#1C1510">
+    <link rel="icon" href="wallet/icono-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;500;600&display=swap">
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <link rel="preconnect" href="https://firestore.googleapis.com">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;500;600&display=swap');
-
         :root {
             --gold: #DBA23C;
             --brown: #2A211A;
@@ -33,7 +38,7 @@
             z-index: -1;
             background:
                 linear-gradient(rgba(15, 10, 6, 0.72), rgba(15, 10, 6, 0.88)),
-                url('font.png') center / cover no-repeat;
+                url('font.webp') center / cover no-repeat;
         }
 
         header {
@@ -50,9 +55,10 @@
             height: 44px;
             margin-left: -10px;
             color: #fff;
-            font-size: 22px;
             text-decoration: none;
         }
+
+        .back svg { width: 22px; height: 22px; }
 
         main {
             max-width: 480px;
@@ -216,7 +222,7 @@
             border: 1px solid rgba(255, 255, 255, 0.35);
         }
 
-        .btn-wallet i { font-size: 22px; }
+        .btn-wallet svg { width: 22px; height: 22px; flex-shrink: 0; }
 
         .btn-wallet.soon {
             background: rgba(0, 0, 0, 0.45);
@@ -288,6 +294,7 @@
     </style>
 </head>
 <body>
+<script src="loader.js" data-images="font.webp"></script>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <symbol id="wheat" viewBox="0 0 24 24">
@@ -305,7 +312,7 @@
 </svg>
 
 <header>
-    <a class="back" href="index.html" aria-label="Regresar al inicio"><i class="fas fa-arrow-left"></i></a>
+    <a class="back" href="index.html" aria-label="Regresar al inicio"><svg class="" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true"><path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.2 288 416 288c17.7 0 32-14.3 32-32s-14.3-32-32-32l-306.7 0L214.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></a>
 </header>
 
 <main>
@@ -317,7 +324,7 @@
         <p class="lead" id="join-lead"></p>
 
         <div class="card">
-            <img class="card-logo" src="log.png" alt="Shell's Bread">
+            <img class="card-logo" src="log.webp" alt="Shell's Bread">
             <div class="stamps" id="join-stamps"></div>
         </div>
 
@@ -346,7 +353,7 @@
         <div id="welcome" class="message ok" hidden></div>
 
         <div class="card">
-            <img class="card-logo" src="log.png" alt="Shell's Bread">
+            <img class="card-logo" src="log.webp" alt="Shell's Bread">
             <div class="card-owner">
                 <b id="card-name"></b>
                 <span id="card-code"></span>
@@ -372,7 +379,7 @@
     <div id="fatal" class="message error" role="alert" hidden></div>
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js" defer></script>
 <script type="module">
     import { app } from "./firebase-init.js";
     import { getFirestore, doc, getDoc, onSnapshot, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
@@ -382,12 +389,10 @@
     const DEFAULT_PROGRAM = { totalStamps: 6, giftStamps: 2, rewardText: "tu premio", conditions: "" };
     const WHATSAPP = "528717345351";
 
-    // Cambia apple/google a true cuando termines los pasos de WALLET_SETUP.md
-    const WALLET = {
-        apple: true,
-        google: false,
-        baseUrl: "https://us-central1-shells-menu.cloudfunctions.net"
-    };
+    const WALLET_URL = "https://us-central1-shells-menu.cloudfunctions.net";
+    // Qué tarjetas están activas se lee de wallet-config.json sin caché, para que un
+    // HTML guardado en el navegador no muestre un botón equivocado.
+    let wallet = { apple: true, google: false };
 
     // ---------- Utilidades ----------
     const db = getFirestore(app);
@@ -533,15 +538,25 @@
     });
 
     // ---------- Vista de tarjeta ----------
-    function setupWalletButton(el, enabled, url, iconClass, label) {
-        el.innerHTML = `<i class="${iconClass}"></i><span>Agregar a ${label}</span>`;
+    const APPLE_ICON = `<svg class="" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg>`;
+    const GOOGLE_ICON = `<svg class="" viewBox="0 0 488 512" fill="currentColor" aria-hidden="true"><path d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"/></svg>`;
+
+    function setupWalletButton(el, enabled, url, icon, label) {
+        el.innerHTML = `${icon}<span>Agregar a ${label}</span>`;
+        el.classList.toggle("soon", !enabled);
         if (enabled) {
             el.href = url;
+            el.removeAttribute("aria-disabled");
         } else {
-            el.classList.add("soon");
+            el.removeAttribute("href");
             el.setAttribute("aria-disabled", "true");
             el.insertAdjacentHTML("beforeend", "<small>Próximamente</small>");
         }
+    }
+
+    function renderWalletButtons(id) {
+        setupWalletButton($("wallet-apple"), wallet.apple, `${WALLET_URL}/apple-pass/pass?id=${id}`, APPLE_ICON, "Apple Wallet");
+        setupWalletButton($("wallet-google"), wallet.google, `${WALLET_URL}/google-pass?id=${id}`, GOOGLE_ICON, "Google Wallet");
     }
 
     function renderCard(id, member) {
@@ -565,8 +580,7 @@
     function showCard(id) {
         if (unsubscribe) unsubscribe();
 
-        setupWalletButton($("wallet-apple"), WALLET.apple, `${WALLET.baseUrl}/apple-pass/pass?id=${id}`, "fa-brands fa-apple", "Apple Wallet");
-        setupWalletButton($("wallet-google"), WALLET.google, `${WALLET.baseUrl}/google-pass?id=${id}`, "fa-brands fa-google", "Google Wallet");
+        renderWalletButtons(id);
 
         if (window.qrcode) {
             const scanUrl = new URL(`admin.html?miembro=${id}`, location.href).href;
@@ -609,13 +623,29 @@
     });
 
     // ---------- Inicio ----------
+    fetch(`wallet-config.json?t=${Date.now()}`, { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((config) => {
+            if (!config) return;
+            wallet = { ...wallet, ...config };
+            if (currentCard) renderWalletButtons(currentCard.id);
+        })
+        .catch(() => { /* se quedan los valores por defecto */ });
+
     // Los cambios hechos en admin se ven al instante, aunque la página ya esté abierta.
+    let firstProgram;
+    window.ShellsLoader?.wait(new Promise((resolve) => { firstProgram = resolve; }));
+
     onSnapshot(programRef, (snap) => {
+        firstProgram();
         program = toProgram(snap);
         renderTerms();
         if (!$("view-join").hidden) renderJoinIntro();
         if (currentCard) renderCard(currentCard.id, currentCard.member);
-    }, (err) => console.warn("Programa no disponible, usando valores por defecto:", err));
+    }, (err) => {
+        firstProgram();
+        console.warn("Programa no disponible, usando valores por defecto:", err);
+    });
 
     const urlId = new URLSearchParams(location.search).get("id");
     const memberId = /^[0-9a-f]{32}$/.test(urlId || "") ? urlId : stored.get();

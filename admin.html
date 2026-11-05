@@ -5,15 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Admin - Shell's Bread</title>
     <meta name="theme-color" content="#0d0d0d">
+    <meta name="robots" content="noindex">
+    <link rel="icon" href="wallet/icono-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;500;600&display=swap">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Shell's Admin">
     <link rel="manifest" href="admin.webmanifest">
     <link rel="apple-touch-icon" href="wallet/icono-192.png">
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" defer></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@400;500;600&display=swap');
         html { background-color:#0d0d0d; }
         body { font-family:'Poppins',sans-serif; color:#fff; }
         .logo-font { font-family:'Playfair Display', serif; }
@@ -21,6 +24,7 @@
         ::-webkit-scrollbar { width:10px; height:10px; }
         ::-webkit-scrollbar-thumb { background:#333; border-radius:6px; }
     </style>
+    <link rel="stylesheet" href="tailwind.css">
 </head>
 <body class="min-h-screen">
 
@@ -293,7 +297,7 @@
         ph.style.display = isRemote ? "none" : "flex";
         img.onerror = () => { img.style.display = "none"; ph.style.display = "flex"; };
         img.onload = () => { ph.style.display = "none"; };
-        if (url) img.src = url;
+        if (url) img.src = /^[\w-]+\.png$/.test(url) ? url.replace(/\.png$/, ".webp") : url;
         wrap.appendChild(img); wrap.appendChild(ph);
         return wrap;
     }
@@ -721,7 +725,7 @@
     }
 
     async function openScannedCard(id) {
-        const snap = await getDoc(doc(db, "members", id));
+        const [snap] = await Promise.all([getDoc(doc(db, "members", id)), loadProgram()]);
         if (!snap.exists()) {
             scanMessage = "Esa tarjeta ya no existe.";
             scannedMember = null;
