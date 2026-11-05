@@ -208,10 +208,14 @@
 
     const can = (permission) => !!me && (me.owner || me.permissions[permission] === true);
 
-    const DEFAULT_PROGRAM = { totalStamps: 6, giftStamps: 2, rewardText: "tu premio", conditions: "" };
+    const DEFAULT_NEARBY_MESSAGE = "Estás cerca de {sucursal}. ¡Disfruta de un pan o una bebida!";
+    const DEFAULT_PROGRAM = {
+        totalStamps: 6, giftStamps: 2, rewardText: "tu premio", conditions: "",
+        nearbyMessage: DEFAULT_NEARBY_MESSAGE, branches: [], mapsApiKey: ""
+    };
     let program = { ...DEFAULT_PROGRAM };
 
-    const NON_MENU_TABS = ["scan", "members", "program", "staff"];
+    const NON_MENU_TABS = ["scan", "members", "program", "branches", "staff"];
     const isMenuTab = () => !NON_MENU_TABS.includes(activeTab);
     let dirty = false;
 
@@ -377,7 +381,10 @@
         const list = [];
         if (can("scan")) list.push({ key: "scan", label: "📷 Escanear" });
         if (can("members")) list.push({ key: "members", label: "⭐ Clientes" });
-        if (can("program")) list.push({ key: "program", label: "🎁 Programa" });
+        if (can("program")) {
+            list.push({ key: "program", label: "🎁 Programa" });
+            list.push({ key: "branches", label: "📍 Sucursales" });
+        }
         if (me?.owner) list.push({ key: "staff", label: "👥 Empleados" });
         if (can("menu") && state) {
             list.push({ key: "global", label: "🖼 Fondo y Logo" });
@@ -869,6 +876,7 @@
         const saveProgram = async () => {
             error.textContent = "";
             const next = {
+                ...program,
                 totalStamps: Number(total.value),
                 giftStamps: Number(gift.value),
                 rewardText: reward.value.trim(),
@@ -907,6 +915,250 @@
             error,
             button("Guardar programa", B.primary, saveProgram)
         );
+    }
+
+    // ---------- Sucursales y aviso por ubicación ----------
+    const MAX_BRANCHES = 10; // límite de Apple Wallet
+    const DEFAULT_MAP_CENTER = { lat: 25.5428, lng: -103.4068 }; // Torreón
+    let mapsScript = null;
+
+    function loadGoogleMaps(key) {
+        if (window.google?.maps?.Map) return Promise.resolve();
+        if (!mapsScript) {
+            mapsScript = new Promise((resolve, reject) => {
+                window.__onMapsReady = resolve;
+                const script = document.createElement("script");
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=__onMapsReady&loading=async&v=weekly&language=es&region=MX`;
+                script.async = true;
+                script.onerror = () => { mapsScript = null; reject(new Error("No se pudo cargar Google Maps")); };
+                document.head.appendChild(script);
+            }).then(async () => {
+                await Promise.all(["maps", "marker", "geocoding"].map(lib => window.google.maps.importLibrary(lib)));
+            });
+        }
+        return mapsScript;
+    }
+
+    // Acepta lo que copia Google Maps al hacer clic en un punto: "25.5428, -103.4068".
+    function parseCoordinates(text) {
+        const match = String(text).trim().match(/^(-?\d{1,3}(?:\.\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:\.\d+)?)$/);
+        if (!match) return null;
+        const lat = Number(match[1]);
+        const lng = Number(match[2]);
+        return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
+    }
+
+    function branchesPanel() {
+        const inputClass = "w-full bg-black/40 border border-white/15 rounded-lg px-3 py-2 text-sm outline-none focus:border-[#F5C400]";
+        const saved = program.branches || [];
+        const branches = saved.length
+            ? saved.map(b => ({ ...b }))
+            : [{ name: "", lat: null, lng: null }, { name: "", lat: null, lng: null }, { name: "", lat: null, lng: null }];
+        let active = 0;
+        let map = null;
+        let markers = [];
+
+        const message = h("textarea", { class: inputClass, rows: "2", maxlength: "100" }, program.nearbyMessage || DEFAULT_NEARBY_MESSAGE);
+        const keyInput = h("input", { class: inputClass, maxlength: "100", autocomplete: "off", value: program.mapsApiKey || "", placeholder: "AIza…" });
+        const error = h("p", { class: "text-red-400 text-sm min-h-[20px]" });
+        const rows = h("div", { class: "space-y-3" });
+        const mapBox = h("div", { class: "w-full h-80 rounded-xl overflow-hidden bg-black/40" });
+        const mapNote = h("p", { class: "text-white/50 text-sm" });
+        const searchInput = h("input", { class: inputClass, placeholder: "Buscar dirección, por ejemplo: Blvd. Independencia, Torreón" });
+
+        const hasCoordinates = (b) => Number.isFinite(b.lat) && Number.isFinite(b.lng);
+
+        const setCoordinates = (index, lat, lng) => {
+            branches[index].lat = Math.round(lat * 1e6) / 1e6;
+            branches[index].lng = Math.round(lng * 1e6) / 1e6;
+            renderRows();
+            drawMarkers();
+        };
+
+        function showPreview() {
+            if (map) return;
+            const branch = branches[active];
+            mapBox.innerHTML = "";
+            if (branch && hasCoordinates(branch)) {
+                mapBox.appendChild(h("iframe", {
+                    class: "w-full h-full border-0", loading: "lazy", title: "Vista previa de la sucursal",
+                    src: `https://www.google.com/maps?q=${branch.lat},${branch.lng}&z=16&output=embed`
+                }));
+            }
+        }
+
+        function drawMarkers() {
+            if (!map) return showPreview();
+            markers.forEach(m => m.setMap(null));
+            markers = [];
+            branches.forEach((branch, index) => {
+                if (!hasCoordinates(branch)) return;
+                const marker = new window.google.maps.Marker({
+                    map, draggable: true,
+                    position: { lat: branch.lat, lng: branch.lng },
+                    label: String(index + 1),
+                    title: branch.name || `Sucursal ${index + 1}`
+                });
+                marker.addListener("dragend", (e) => { active = index; setCoordinates(index, e.latLng.lat(), e.latLng.lng()); });
+                marker.addListener("click", () => { active = index; renderRows(); });
+                markers.push(marker);
+            });
+        }
+
+        function renderRows() {
+            rows.innerHTML = "";
+            branches.forEach((branch, index) => {
+                const coordinates = h("input", {
+                    class: inputClass, inputmode: "text", placeholder: "Coordenadas: 25.5428, -103.4068",
+                    value: hasCoordinates(branch) ? `${branch.lat}, ${branch.lng}` : "",
+                    onchange: (e) => {
+                        const text = e.target.value.trim();
+                        const parsed = parseCoordinates(text);
+                        error.textContent = text && !parsed ? "Las coordenadas deben verse así: 25.5428, -103.4068" : "";
+                        active = index;
+                        branch.lat = parsed ? parsed.lat : null;
+                        branch.lng = parsed ? parsed.lng : null;
+                        if (parsed && map) map.panTo(parsed);
+                        drawMarkers();
+                    }
+                });
+                const isActive = index === active;
+                rows.appendChild(h("div", {
+                    class: "rounded-xl p-3 space-y-2 border " + (isActive ? "border-[#F5C400] bg-[#F5C400]/5" : "border-white/10 bg-black/20")
+                },
+                    h("div", { class: "flex items-center gap-2" },
+                        h("span", { class: "w-7 h-7 shrink-0 rounded-full bg-white/10 flex items-center justify-center text-sm font-semibold" }, String(index + 1)),
+                        h("input", {
+                            class: inputClass, maxlength: "60", value: branch.name || "", placeholder: "Nombre de la sucursal",
+                            oninput: (e) => { branch.name = e.target.value; }
+                        }),
+                        button("✕", B.danger + " h-9 shrink-0", () => {
+                            branches.splice(index, 1);
+                            if (!branches.length) branches.push({ name: "", lat: null, lng: null });
+                            active = Math.min(active, branches.length - 1);
+                            renderRows();
+                            drawMarkers();
+                        })
+                    ),
+                    coordinates,
+                    button(isActive ? "✓ Ubicando esta sucursal en el mapa" : "Ubicar en el mapa", isActive ? B.primary : B.ghost, () => {
+                        active = index;
+                        renderRows();
+                        if (map && hasCoordinates(branch)) map.panTo({ lat: branch.lat, lng: branch.lng });
+                        showPreview();
+                    })
+                ));
+            });
+        }
+
+        const search = async () => {
+            const address = searchInput.value.trim();
+            if (!address || !map) return;
+            try {
+                const { results } = await new window.google.maps.Geocoder().geocode({ address, region: "mx" });
+                const location = results[0].geometry.location;
+                setCoordinates(active, location.lat(), location.lng());
+                map.setCenter(location);
+                map.setZoom(17);
+                mapNote.textContent = "Revisa el punto. Puedes arrastrarlo si no quedó exacto.";
+            } catch (e) {
+                mapNote.textContent = e.code === "ZERO_RESULTS"
+                    ? "No se encontró esa dirección. Escríbela con más detalle o haz clic en el mapa."
+                    : "No se pudo buscar. Revisa que Geocoding API esté activada en tu clave, o haz clic en el mapa.";
+            }
+        };
+
+        async function startMap() {
+            const key = (program.mapsApiKey || "").trim();
+            if (!key && !window.google?.maps?.Map) {
+                mapNote.textContent = "Sin clave de Google Maps puedes pegar las coordenadas de cada sucursal. Con la clave podrás hacer clic en el mapa.";
+                showPreview();
+                return;
+            }
+            mapNote.textContent = "Elige una sucursal y haz clic en el mapa para colocarla. También puedes arrastrar el punto.";
+            // Google llama a esta función si la clave no es válida para este sitio.
+            window.gm_authFailure = () => {
+                map = null;
+                mapNote.textContent = "Google rechazó la clave. Revisa que sea correcta, que Maps JavaScript API esté activada y que permita este sitio.";
+                showPreview();
+            };
+            try {
+                await loadGoogleMaps(key);
+                if (!mapBox.isConnected) return;
+                const located = branches.filter(hasCoordinates);
+                map = new window.google.maps.Map(mapBox, {
+                    center: located.length ? { lat: located[0].lat, lng: located[0].lng } : DEFAULT_MAP_CENTER,
+                    zoom: located.length ? 14 : 12,
+                    streetViewControl: false,
+                    mapTypeControl: false
+                });
+                map.addListener("click", (e) => setCoordinates(active, e.latLng.lat(), e.latLng.lng()));
+                drawMarkers();
+            } catch (e) {
+                mapNote.textContent = e.message;
+            }
+        }
+
+        const save = async () => {
+            error.textContent = "";
+            const text = message.value.trim();
+            if (!text) { error.textContent = "Escribe el mensaje."; return; }
+
+            const filled = branches.filter(b => (b.name || "").trim() || hasCoordinates(b));
+            if (filled.some(b => !(b.name || "").trim())) { error.textContent = "Ponle nombre a cada sucursal."; return; }
+            if (filled.some(b => !hasCoordinates(b))) { error.textContent = "Falta ubicar una sucursal en el mapa."; return; }
+
+            const next = {
+                ...program,
+                nearbyMessage: text,
+                mapsApiKey: keyInput.value.trim(),
+                branches: filled.map(b => ({ name: b.name.trim(), lat: b.lat, lng: b.lng }))
+            };
+            try {
+                await setDoc(doc(db, "site", "program"), next);
+                const keyChanged = next.mapsApiKey !== program.mapsApiKey;
+                program = next;
+                setStatus("Sucursales guardadas ✓ Las tarjetas se actualizan solas.");
+                if (keyChanged) renderEditor();
+            } catch (e) {
+                error.textContent = "No se pudo guardar: " + e.message;
+            }
+        };
+
+        const wrap = h("div", { class: "space-y-4 max-w-3xl" },
+            h("div", { class: "bg-[#161616] border border-white/10 rounded-2xl p-5 space-y-3" },
+                h("h3", { class: "font-semibold text-lg" }, "Aviso al estar cerca"),
+                labeled("Mensaje de la tarjeta", message),
+                h("p", { class: "text-white/40 text-xs" }, "Escribe {sucursal} donde quieras que aparezca el nombre de la sucursal más cercana. Hazlo corto para que se lea completo en la pantalla bloqueada.")
+            ),
+            h("div", { class: "bg-[#161616] border border-white/10 rounded-2xl p-5 space-y-3" },
+                h("h3", { class: "font-semibold text-lg" }, "Sucursales"),
+                rows,
+                button("+ Agregar sucursal", B.ghost, () => {
+                    if (branches.length >= MAX_BRANCHES) { error.textContent = `Apple Wallet permite hasta ${MAX_BRANCHES} ubicaciones.`; return; }
+                    branches.push({ name: "", lat: null, lng: null });
+                    active = branches.length - 1;
+                    renderRows();
+                    showPreview();
+                })
+            ),
+            h("div", { class: "bg-[#161616] border border-white/10 rounded-2xl p-5 space-y-3" },
+                h("h3", { class: "font-semibold text-lg" }, "Mapa"),
+                mapNote,
+                h("div", { class: "flex gap-2" },
+                    h("div", { class: "flex-1" }, searchInput),
+                    button("Buscar", B.ghost, search)
+                ),
+                mapBox,
+                labeled("Clave de Google Maps", keyInput)
+            ),
+            error,
+            button("Guardar sucursales y mensaje", B.primary, save)
+        );
+
+        renderRows();
+        startMap();
+        return wrap;
     }
 
     // ---------- Empleados ----------
@@ -1051,6 +1303,8 @@
             panel.appendChild(membersPanel());
         } else if (activeTab === "program") {
             panel.appendChild(programPanel());
+        } else if (activeTab === "branches") {
+            panel.appendChild(branchesPanel());
         } else if (activeTab === "staff") {
             panel.appendChild(staffPanel());
         } else if (activeTab === "global") {
