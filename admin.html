@@ -209,9 +209,11 @@
     const can = (permission) => !!me && (me.owner || me.permissions[permission] === true);
 
     const DEFAULT_NEARBY_MESSAGE = "Estás cerca de {sucursal}. ¡Disfruta de un pan o una bebida!";
+    // Clave de navegador: es visible por diseño y se protege restringiéndola a este dominio en Google Cloud.
+    const DEFAULT_MAPS_KEY = "AIzaSyCnNgClpk5PzcN8Q5guDnFn20_JML1OMyU";
     const DEFAULT_PROGRAM = {
         totalStamps: 6, giftStamps: 2, rewardText: "tu premio", conditions: "",
-        nearbyMessage: DEFAULT_NEARBY_MESSAGE, branches: [], mapsApiKey: ""
+        nearbyMessage: DEFAULT_NEARBY_MESSAGE, branches: [], mapsApiKey: DEFAULT_MAPS_KEY
     };
     let program = { ...DEFAULT_PROGRAM };
 
@@ -1046,6 +1048,7 @@
                         renderRows();
                         if (map && hasCoordinates(branch)) map.panTo({ lat: branch.lat, lng: branch.lng });
                         showPreview();
+                        mapBox.scrollIntoView({ behavior: "smooth", block: "center" });
                     })
                 ));
             });
