@@ -132,8 +132,15 @@
     }
 
     .btn-membresia {
+      display: block;
+      margin: 0 auto;
       background: #fff;
       color: #B4700F;
+      text-decoration: none;
+    }
+
+    [hidden] {
+      display: none !important;
     }
 
     .btn-membresia:hover {
@@ -188,9 +195,10 @@
         MENÚ
       </button>
 
-      <button class="btn btn-membresia" onclick="window.location.href='membresia.html'">
+      <!-- El enlace se configura en admin.html; sin enlace, el botón no aparece -->
+      <a id="membership-link" class="btn btn-membresia" target="_blank" rel="noopener" hidden>
         MEMBRESÍA
-      </button>
+      </a>
 
       <button class="btn btn-recomendar" onclick="window.open('https://maps.app.goo.gl/EN3fVNwzhTC5LDzV8?g_st=ic', '_blank', 'noopener')">
         RECOMIÉNDANOS
@@ -198,6 +206,23 @@
     </div>
 
   </div>
+
+  <script>
+    (function () {
+      var link = document.getElementById('membership-link');
+      var request = fetch('https://firestore.googleapis.com/v1/projects/shells-menu/databases/(default)/documents/site/menu?mask.fieldPaths=membershipUrl')
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (doc) {
+          var url = doc && doc.fields && doc.fields.membershipUrl && doc.fields.membershipUrl.stringValue;
+          if (url && /^https:\/\//i.test(url)) {
+            link.href = url;
+            link.hidden = false;
+          }
+        })
+        .catch(function () { /* sin enlace, el botón queda oculto */ });
+      if (window.ShellsLoader) window.ShellsLoader.wait(request);
+    })();
+  </script>
 
 </body>
 </html>
